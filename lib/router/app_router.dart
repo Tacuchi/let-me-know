@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants/constants.dart';
+import '../di/injection_container.dart';
+import '../features/history/application/cubit/history_cubit.dart';
 import '../features/home/presentation/pages/home_page.dart';
 import '../features/reminders/presentation/pages/reminder_list_page.dart';
 import '../features/history/presentation/pages/history_page.dart';
@@ -48,7 +51,10 @@ final appRouter = GoRouter(
             GoRoute(
               path: AppRoutes.history,
               name: AppRoutes.historyName,
-              builder: (context, state) => const HistoryPage(),
+              builder: (context, state) => BlocProvider(
+                create: (_) => getIt<HistoryCubit>()..start(),
+                child: const HistoryPage(),
+              ),
             ),
           ],
         ),

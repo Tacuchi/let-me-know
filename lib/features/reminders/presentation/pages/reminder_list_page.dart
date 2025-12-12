@@ -1,9 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/core.dart';
+import '../../application/cubit/reminder_list_cubit.dart';
+import '../../application/cubit/reminder_list_state.dart';
 import '../../domain/entities/reminder.dart';
+import '../../domain/entities/reminder_status.dart';
 
 /// Página de lista de recordatorios
 /// Muestra todos los recordatorios con filtros y búsqueda
@@ -17,12 +22,6 @@ class ReminderListPage extends StatefulWidget {
 
 class _ReminderListPageState extends State<ReminderListPage>
     with SingleTickerProviderStateMixin {
-  int _selectedFilter = 0;
-  final List<String> _filters = ['Todos', 'Hoy', 'Pendientes', 'Completados'];
-
-  // Datos de ejemplo para demostración
-  final List<Reminder> _sampleReminders = [];
-
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -57,58 +56,91 @@ class _ReminderListPageState extends State<ReminderListPage>
         ? AppColors.textPrimaryDark
         : AppColors.textPrimary;
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: appBarBgColor,
-        title: Text(
-          'Mis Recordatorios',
-          style: AppTypography.titleMedium.copyWith(color: textColor),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            tooltip: 'Buscar',
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              _showSearchSheet(context, isDark);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.help_outline_rounded),
-            tooltip: 'Ayuda',
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              // TODO: Implementar guía de ayuda
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            children: [
-              // Filtros con chips animados
-              _buildFilters(isDark),
+    return BlocBuilder<ReminderListCubit, ReminderListState>(
+      builder: (context, state) {
+        final filter = switch (state) {
+          ReminderListLoaded(:final filter) => filter,
+          _ => ReminderListFilter.all,
+        };
 
-              // Resumen del día
-              if (_selectedFilter == 1) _buildDaySummary(isDark),
+        final filtered = state is ReminderListLoaded
+            ? state.filtered
+            : const <Reminder>[];
 
-              // Lista de recordatorios
-              Expanded(
-                child: _sampleReminders.isEmpty
-                    ? _buildEmptyState(isDark)
-                    : _buildReminderList(isDark),
+        return Scaffold(
+          backgroundColor: bgColor,
+          appBar: AppBar(
+            backgroundColor: appBarBgColor,
+            title: Text(
+              'Mis Recordatorios',
+              style: AppTypography.titleMedium.copyWith(color: textColor),
+            ),
+            actions: [
+              if (kDebugMode) ...[
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'DEBUG: Refrescar',
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.read<ReminderListCubit>().refresh();
+                  },
+                ),
+              ],
+              IconButton(
+                icon: const Icon(Icons.search_rounded),
+                tooltip: 'Buscar',
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _showSearchSheet(context, isDark);
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.help_outline_rounded),
+                tooltip: 'Ayuda',
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  // TODO: Implementar guía de ayuda
+                },
               ),
             ],
           ),
-        ),
-      ),
+          body: SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                children: [
+                  _buildFilters(isDark, filter),
+
+                  if (filter == ReminderListFilter.today)
+                    _buildDaySummary(isDark, state),
+
+                  Expanded(
+                    child: switch (state) {
+                      ReminderListLoading() => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                      ReminderListError(:final message) => Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          child: Text(message),
+                        ),
+                      ),
+                      ReminderListLoaded() =>
+                        filtered.isEmpty
+                            ? _buildEmptyState(isDark)
+                            : _buildReminderList(isDark, filtered),
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildFilters(bool isDark) {
+  Widget _buildFilters(bool isDark, ReminderListFilter selected) {
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
     final selectedColor = isDark
         ? AppColors.accentPrimaryDark
@@ -130,57 +162,63 @@ class _ReminderListPageState extends State<ReminderListPage>
           horizontal: AppSpacing.screenPadding,
         ),
         child: Row(
-          children: List.generate(_filters.length, (index) {
-            final isSelected = _selectedFilter == index;
-            return Padding(
-              padding: EdgeInsets.only(
-                right: index < _filters.length - 1 ? AppSpacing.sm : 0,
-              ),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _selectedFilter = index);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
+          children: ReminderListFilter.values
+              .map((filter) {
+                final isSelected = selected == filter;
+                return Padding(
+                  padding: EdgeInsets.only(
+                    right: filter != ReminderListFilter.values.last
+                        ? AppSpacing.sm
+                        : 0,
                   ),
-                  decoration: BoxDecoration(
-                    color: isSelected ? selectedColor : unselectedBg,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: selectedColor.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Text(
-                    _filters[index],
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : textColor,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      fontSize: 14,
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      context.read<ReminderListCubit>().setFilter(filter);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected ? selectedColor : unselectedBg,
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusFull,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: selectedColor.withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        filter.label,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : textColor,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            );
-          }),
+                );
+              })
+              .toList(growable: false),
         ),
       ),
     );
   }
 
-  Widget _buildDaySummary(bool isDark) {
+  Widget _buildDaySummary(bool isDark, ReminderListState state) {
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
     final textColor = isDark
         ? AppColors.textPrimaryDark
@@ -189,6 +227,19 @@ class _ReminderListPageState extends State<ReminderListPage>
     final today = dateFormat.format(DateTime.now());
     final capitalizedDate =
         today.substring(0, 1).toUpperCase() + today.substring(1);
+
+    final todayItems = state is ReminderListLoaded
+        ? state.filtered
+        : const <Reminder>[];
+    final pending = todayItems
+        .where((r) => r.status == ReminderStatus.pending)
+        .length;
+    final overdue = todayItems
+        .where((r) => r.status == ReminderStatus.overdue || r.isOverdue)
+        .length;
+    final completed = todayItems
+        .where((r) => r.status == ReminderStatus.completed)
+        .length;
 
     return Container(
       margin: const EdgeInsets.all(AppSpacing.screenPadding),
@@ -231,7 +282,7 @@ class _ReminderListPageState extends State<ReminderListPage>
             children: [
               Expanded(
                 child: AnimatedCounter(
-                  value: 0,
+                  value: pending,
                   label: 'Pendientes',
                   color: AppColors.pending,
                 ),
@@ -239,7 +290,7 @@ class _ReminderListPageState extends State<ReminderListPage>
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: AnimatedCounter(
-                  value: 0,
+                  value: overdue,
                   label: 'Vencidos',
                   color: AppColors.overdue,
                 ),
@@ -247,7 +298,7 @@ class _ReminderListPageState extends State<ReminderListPage>
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: AnimatedCounter(
-                  value: 0,
+                  value: completed,
                   label: 'Completados',
                   color: AppColors.completed,
                 ),
@@ -259,13 +310,13 @@ class _ReminderListPageState extends State<ReminderListPage>
     );
   }
 
-  Widget _buildReminderList(bool isDark) {
+  Widget _buildReminderList(bool isDark, List<Reminder> reminders) {
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
-      itemCount: _sampleReminders.length,
+      itemCount: reminders.length,
       itemBuilder: (context, index) {
-        final reminder = _sampleReminders[index];
+        final reminder = reminders[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: ReminderCard(
@@ -275,11 +326,11 @@ class _ReminderListPageState extends State<ReminderListPage>
             },
             onComplete: () {
               HapticFeedback.mediumImpact();
-              // TODO: Marcar como completado
+              context.read<ReminderListCubit>().markAsCompleted(reminder.id);
             },
             onDelete: () {
               HapticFeedback.mediumImpact();
-              // TODO: Eliminar
+              context.read<ReminderListCubit>().delete(reminder.id);
             },
           ),
         );

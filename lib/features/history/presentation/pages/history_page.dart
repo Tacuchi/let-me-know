@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/core.dart';
+import '../../application/cubit/history_cubit.dart';
+import '../../application/cubit/history_state.dart';
+import '../../../reminders/domain/entities/reminder.dart';
+import '../../../reminders/domain/entities/reminder_type.dart';
 
 /// Página de historial de recordatorios
 /// Muestra los recordatorios completados y pasados
@@ -43,25 +49,29 @@ class _HistoryPageState extends State<HistoryPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.bgPrimaryDark : AppColors.bgPrimary;
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(isDark),
+    return BlocBuilder<HistoryCubit, HistoryState>(
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: bgColor,
+          body: SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                children: [
+                  // Header
+                  _buildHeader(isDark),
 
-              // Estadísticas
-              _buildStats(isDark),
+                  // Estadísticas
+                  _buildStats(isDark, state),
 
-              // Lista de historial
-              Expanded(child: _buildHistoryList(isDark)),
-            ],
+                  // Lista de historial
+                  Expanded(child: _buildHistoryList(isDark, state)),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -106,7 +116,7 @@ class _HistoryPageState extends State<HistoryPage>
     );
   }
 
-  Widget _buildStats(bool isDark) {
+  Widget _buildStats(bool isDark, HistoryState state) {
     final primaryColor = isDark
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
@@ -114,6 +124,9 @@ class _HistoryPageState extends State<HistoryPage>
         ? AppColors.accentSecondaryDark
         : AppColors.accentSecondary;
     final dividerColor = isDark ? AppColors.dividerDark : AppColors.divider;
+
+    final monthCount = state is HistoryLoaded ? state.completedThisMonth : 0;
+    final totalCount = state is HistoryLoaded ? state.completedTotal : 0;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
@@ -134,7 +147,7 @@ class _HistoryPageState extends State<HistoryPage>
           Expanded(
             child: _buildStatItem(
               icon: Icons.check_circle_outline,
-              value: '0',
+              value: '$monthCount',
               label: 'Este mes',
               color: secondaryColor,
               isDark: isDark,
@@ -144,7 +157,7 @@ class _HistoryPageState extends State<HistoryPage>
           Expanded(
             child: _buildStatItem(
               icon: Icons.emoji_events_outlined,
-              value: '0',
+              value: '$totalCount',
               label: 'Total',
               color: primaryColor,
               isDark: isDark,
@@ -182,10 +195,44 @@ class _HistoryPageState extends State<HistoryPage>
     );
   }
 
-  Widget _buildHistoryList(bool isDark) {
-    // Por ahora mostramos estado vacío
-    // TODO: Conectar con datos reales
-    return _buildEmptyState(isDark);
+  Widget _buildHistoryList(bool isDark, HistoryState state) {
+    return switch (state) {
+      HistoryLoading() => const Center(child: CircularProgressIndicator()),
+      HistoryError(:final message) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Text(message),
+        ),
+      ),
+      HistoryLoaded(:final completed) =>
+        completed.isEmpty
+            ? _buildEmptyState(isDark)
+            : _buildList(isDark, completed),
+    };
+  }
+
+  Widget _buildList(bool isDark, List<Reminder> reminders) {
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.lg),
+      itemCount: reminders.length,
+      itemBuilder: (context, index) {
+        final r = reminders[index];
+        final completedAt = r.completedAt ?? DateTime.now();
+        return HistoryItem(
+          title: r.title,
+          subtitle: _formatCompletedAt(completedAt),
+          emoji: r.type.emoji,
+          completedAt: completedAt,
+          isDark: isDark,
+        );
+      },
+    );
+  }
+
+  String _formatCompletedAt(DateTime dt) {
+    final formatter = DateFormat('d MMM yyyy, h:mm a', 'es_ES');
+    return 'Completado: ${formatter.format(dt)}';
   }
 
   Widget _buildEmptyState(bool isDark) {

@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app.dart';
 import '../../../../core/core.dart';
+import '../../../reminders/application/cubit/reminder_summary_cubit.dart';
+import '../../../reminders/application/cubit/reminder_summary_state.dart';
 
 /// Página principal de la aplicación
 /// Muestra reloj, resumen del día y acceso rápido a crear recordatorios
@@ -26,10 +29,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-
-  // Datos de ejemplo
-  final int _pendingCount = 0;
-  final int _completedCount = 0;
 
   @override
   void initState() {
@@ -419,24 +418,88 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
           const SizedBox(height: AppSpacing.md),
           // Contadores animados
-          Row(
-            children: [
-              Expanded(
-                child: AnimatedCounter(
-                  value: _pendingCount,
-                  label: 'Pendientes',
-                  color: AppColors.pending,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: AnimatedCounter(
-                  value: _completedCount,
-                  label: 'Completados',
-                  color: AppColors.completed,
-                ),
-              ),
-            ],
+          Builder(
+            builder: (context) {
+              final hasProvider =
+                  context
+                      .findAncestorWidgetOfExactType<
+                        BlocProvider<ReminderSummaryCubit>
+                      >() !=
+                  null;
+
+              if (!hasProvider) {
+                // Modo degradado (tests / preview sin DI).
+                return Row(
+                  children: [
+                    Expanded(
+                      child: AnimatedCounter(
+                        value: 0,
+                        label: 'Pendientes',
+                        color: AppColors.pending,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: AnimatedCounter(
+                        value: 0,
+                        label: 'Vencidos',
+                        color: AppColors.overdue,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: AnimatedCounter(
+                        value: 0,
+                        label: 'Completados',
+                        color: AppColors.completed,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return BlocBuilder<ReminderSummaryCubit, ReminderSummaryState>(
+                builder: (context, state) {
+                  final pending = state is ReminderSummaryLoaded
+                      ? state.pending
+                      : 0;
+                  final overdue = state is ReminderSummaryLoaded
+                      ? state.overdue
+                      : 0;
+                  final completed = state is ReminderSummaryLoaded
+                      ? state.completed
+                      : 0;
+
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: AnimatedCounter(
+                          value: pending,
+                          label: 'Pendientes',
+                          color: AppColors.pending,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: AnimatedCounter(
+                          value: overdue,
+                          label: 'Vencidos',
+                          color: AppColors.overdue,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: AnimatedCounter(
+                          value: completed,
+                          label: 'Completados',
+                          color: AppColors.completed,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ],
       ),

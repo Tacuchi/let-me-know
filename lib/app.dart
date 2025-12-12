@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/theme/app_theme.dart';
+import 'di/injection_container.dart';
+import 'features/reminders/application/cubit/reminder_list_cubit.dart';
+import 'features/reminders/application/cubit/reminder_summary_cubit.dart';
 import 'router/app_router.dart';
 
 /// Widget raíz de la aplicación
@@ -65,7 +69,7 @@ class LetMeKnowAppState extends State<LetMeKnowApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    final app = MaterialApp.router(
       title: 'Let Me Know',
       debugShowCheckedModeBanner: false,
 
@@ -98,6 +102,23 @@ class LetMeKnowAppState extends State<LetMeKnowApp> {
           child: child ?? const SizedBox.shrink(),
         );
       },
+    );
+
+    // Providers globales para que Home y Reminders consuman el mismo stream.
+    // Importante: NO montarlos dentro de `MaterialApp.builder` porque ese builder
+    // puede ejecutarse con frecuencia y recrear cubits (causando cargas largas).
+    final canProvide =
+        getIt.isRegistered<ReminderListCubit>() &&
+        getIt.isRegistered<ReminderSummaryCubit>();
+
+    if (!canProvide) return app;
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => getIt<ReminderListCubit>()..start()),
+        BlocProvider(create: (_) => getIt<ReminderSummaryCubit>()..start()),
+      ],
+      child: app,
     );
   }
 }
