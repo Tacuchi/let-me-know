@@ -36,9 +36,9 @@ dependencies:
   drift_flutter: ^0.2.8
   sqlite3_flutter_libs: ^0.5.41
 
-  # Audio/Voz (para futuras features)
+  # Audio/Voz
   # record: ^5.1.2              # Grabación de audio
-  # speech_to_text: ^7.0.0      # Transcripción
+  speech_to_text: ^7.0.0        # Transcripción
 
   # Notificaciones (para futuras features)
   # flutter_local_notifications: ^18.0.1
