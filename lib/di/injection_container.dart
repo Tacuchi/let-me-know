@@ -6,10 +6,16 @@ import 'package:let_me_know/features/reminders/application/cubit/reminder_list_c
 import 'package:let_me_know/features/reminders/application/cubit/reminder_summary_cubit.dart';
 import 'package:let_me_know/features/reminders/domain/repositories/reminder_repository.dart';
 import 'package:let_me_know/features/reminders/infrastructure/repositories/reminder_repository_drift_impl.dart';
+import 'package:let_me_know/services/speech_to_text/speech_to_text_service.dart';
+import 'package:let_me_know/services/speech_to_text/speech_to_text_service_impl.dart';
 
 final getIt = GetIt.instance;
 
 Future<void> configureDependencies() async {
+  // Services
+  getIt.registerLazySingleton<SpeechToTextService>(
+    () => SpeechToTextServiceImpl(),
+  );
   // Data Sources
   getIt.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
