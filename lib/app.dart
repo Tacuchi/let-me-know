@@ -8,13 +8,9 @@ import 'features/reminders/application/cubit/reminder_list_cubit.dart';
 import 'features/reminders/application/cubit/reminder_summary_cubit.dart';
 import 'router/app_router.dart';
 
-/// Widget raíz de la aplicación
-/// Configura el tema, navegación y proveedores globales
-/// Soporta tema claro y oscuro (tendencia 2025)
 class LetMeKnowApp extends StatefulWidget {
   const LetMeKnowApp({super.key});
 
-  /// Permite acceder al state desde cualquier lugar de la app
   static LetMeKnowAppState of(BuildContext context) {
     return context.findAncestorStateOfType<LetMeKnowAppState>()!;
   }
@@ -23,22 +19,16 @@ class LetMeKnowApp extends StatefulWidget {
   State<LetMeKnowApp> createState() => LetMeKnowAppState();
 }
 
-/// State público de la aplicación para acceder al cambio de tema
 class LetMeKnowAppState extends State<LetMeKnowApp> {
   ThemeMode _themeMode = ThemeMode.system;
 
   ThemeMode get themeMode => _themeMode;
 
-  /// Cambia el modo de tema de la aplicación
   void setThemeMode(ThemeMode mode) {
-    setState(() {
-      _themeMode = mode;
-    });
-    // Actualizar el estilo de la barra de estado
+    setState(() => _themeMode = mode);
     _updateSystemUI(mode);
   }
 
-  /// Alterna entre tema claro y oscuro
   void toggleTheme() {
     final brightness = MediaQuery.platformBrightnessOf(context);
     final isDark =
@@ -72,31 +62,20 @@ class LetMeKnowAppState extends State<LetMeKnowApp> {
     final app = MaterialApp.router(
       title: 'Let Me Know',
       debugShowCheckedModeBanner: false,
-
-      // Temas con soporte para modo oscuro
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: _themeMode,
-
-      // Animación de transición de tema suave
       themeAnimationDuration: const Duration(milliseconds: 300),
       themeAnimationCurve: Curves.easeInOut,
-
-      // Navegación
       routerConfig: appRouter,
-
-      // Localization (para formatos de fecha en español)
       locale: const Locale('es', 'ES'),
-
-      // Builder para configuraciones globales
       builder: (context, child) {
-        // Escalar texto para accesibilidad
         final mediaQuery = MediaQuery.of(context);
+        // Limitar escala de texto para mantener diseño accesible
         final textScaleFactor = mediaQuery.textScaler.clamp(
           minScaleFactor: 1.0,
-          maxScaleFactor: 1.5, // Limitar para mantener diseño
+          maxScaleFactor: 1.5,
         );
-
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: textScaleFactor),
           child: child ?? const SizedBox.shrink(),
@@ -104,14 +83,11 @@ class LetMeKnowAppState extends State<LetMeKnowApp> {
       },
     );
 
-    // Providers globales para que Home y Reminders consuman el mismo stream.
-    // Importante: NO montarlos dentro de `MaterialApp.builder` porque ese builder
-    // puede ejecutarse con frecuencia y recrear cubits (causando cargas largas).
-    final canProvide =
-        getIt.isRegistered<ReminderListCubit>() &&
+    // Proveedores globales fuera de MaterialApp.builder para evitar recreación de cubits
+    final cubitsRegistered = getIt.isRegistered<ReminderListCubit>() &&
         getIt.isRegistered<ReminderSummaryCubit>();
 
-    if (!canProvide) return app;
+    if (!cubitsRegistered) return app;
 
     return MultiBlocProvider(
       providers: [

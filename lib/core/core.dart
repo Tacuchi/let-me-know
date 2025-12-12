@@ -1,5 +1,3 @@
-/// Barrel file para exportar todo el módulo core
-/// Incluye constantes, tema, widgets y utilidades
 library;
 
 export 'constants/constants.dart';

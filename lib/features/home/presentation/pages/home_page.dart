@@ -21,7 +21,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late Timer _timer;
   DateTime _currentTime = DateTime.now();
 
-  // Animaciones de entrada
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late Animation<double> _fadeAnimation;
@@ -31,11 +30,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _currentTime = DateTime.now();
-      });
-    });
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => setState(() => _currentTime = DateTime.now()),
+    );
 
     _fadeController = AnimationController(
       vsync: this,
@@ -698,7 +696,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 }
 
-/// Botón de cambio de tema con animación
 class _ThemeToggleButton extends StatefulWidget {
   final bool isDark;
 

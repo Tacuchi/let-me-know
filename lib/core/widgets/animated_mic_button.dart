@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../constants/constants.dart';
 
-/// Botón de micrófono animado con ondas visuales
-/// Diseñado para accesibilidad de adultos mayores
 class AnimatedMicButton extends StatefulWidget {
   final bool isRecording;
   final VoidCallback onTap;
@@ -34,7 +32,6 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
   void initState() {
     super.initState();
 
-    // Animación de pulso cuando está grabando
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -43,13 +40,11 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Animación de ondas
     _waveController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
 
-    // Animación de escala al tocar
     _scaleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 150),
@@ -58,9 +53,7 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
       CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
     );
 
-    if (widget.isRecording) {
-      _startRecordingAnimation();
-    }
+    if (widget.isRecording) _startRecordingAnimation();
   }
 
   @override
@@ -108,7 +101,6 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
   }
 
   void _handleTap() {
-    // Feedback háptico
     HapticFeedback.mediumImpact();
     widget.onTap();
   }
@@ -132,10 +124,7 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Ondas de sonido
             if (widget.isRecording) ..._buildWaves(recordingColor),
-
-            // Anillo pulsante
             if (widget.isRecording)
               AnimatedBuilder(
                 animation: _pulseAnimation,
@@ -149,12 +138,10 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
                         color: recordingColor.withValues(alpha: 0.3),
                         width: 3,
                       ),
-                    ),
-                  );
-                },
-              ),
-
-            // Botón principal
+                  ),
+                );
+              },
+            ),
             ScaleTransition(
               scale: _scaleAnimation,
               child: GestureDetector(

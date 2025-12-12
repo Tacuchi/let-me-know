@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -14,9 +13,6 @@ import '../../../reminders/domain/entities/reminder_type.dart';
 import '../../../reminders/domain/repositories/reminder_repository.dart';
 import '../../../../services/speech_to_text/speech_to_text_service.dart';
 
-/// Página de grabación de voz
-/// Permite grabar audio y transcribirlo para crear recordatorios
-/// Diseño premium con animaciones fluidas (2025)
 class VoiceRecordingPage extends StatefulWidget {
   const VoiceRecordingPage({super.key});
 
@@ -27,14 +23,12 @@ class VoiceRecordingPage extends StatefulWidget {
 class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     with TickerProviderStateMixin {
   bool _isRecording = false;
-  bool _isProcessing = false;
   String? _transcription;
   String? _error;
   bool _isInitialized = false;
   
   late final SpeechToTextService _speechService;
 
-  // Animaciones
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -42,7 +36,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
   void initState() {
     super.initState();
 
-    // Animación de entrada
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -53,8 +46,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
     _fadeController.forward();
-    
-    // Inicializar servicio de voz
     _speechService = getIt<SpeechToTextService>();
     _initializeSpeech();
   }
@@ -135,55 +126,39 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
   
-  /// Determinar qué vista mostrar basado en el estado
   Widget _buildMainView(bool isDark) {
-    // Si hay transcripción final (grabación terminó), mostrar vista de confirmación
-    if (_transcription != null && _transcription!.isNotEmpty && !_isRecording) {
-      return _buildConfirmationView(isDark);
-    }
-    // Vista principal de grabación (con transcripción en tiempo real si está grabando)
+    final hasTranscription = _transcription != null && _transcription!.isNotEmpty;
+    if (hasTranscription && !_isRecording) return _buildConfirmationView(isDark);
     return _buildRecordingView(isDark);
   }
 
-  /// Vista principal de grabación con transcripción en tiempo real
   Widget _buildRecordingView(bool isDark) {
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final secondaryColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final primaryColor = isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final showTranscription = _isRecording || (_transcription != null && _transcription!.isNotEmpty);
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
       child: Column(
         children: [
           const SizedBox(height: AppSpacing.lg),
-          
-          // Header con estado
           _buildStateHeader(isDark),
-          
           const SizedBox(height: AppSpacing.xl),
-          
-          // Área de transcripción en tiempo real (visible mientras graba)
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child: _isRecording || (_transcription != null && _transcription!.isNotEmpty)
+              child: showTranscription
                   ? _buildLiveTranscriptionArea(isDark)
                   : _buildIdlePrompt(isDark),
             ),
           ),
-          
           const SizedBox(height: AppSpacing.lg),
-          
-          // Botón de micrófono
           AnimatedMicButton(
             isRecording: _isRecording,
             onTap: _toggleRecording,
             size: 88,
           ),
-          
           const SizedBox(height: AppSpacing.sm),
-          
-          // Texto de acción
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: Text(
@@ -202,7 +177,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
   
-  /// Header que muestra el estado actual
   Widget _buildStateHeader(bool isDark) {
     final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final recordingColor = AppColors.recording;
@@ -252,7 +226,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
   
-  /// Prompt cuando está idle (no grabando)
   Widget _buildIdlePrompt(bool isDark) {
     final secondaryColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     
@@ -285,7 +258,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
   
-  /// Área de transcripción en tiempo real
   Widget _buildLiveTranscriptionArea(bool isDark) {
     final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
@@ -307,7 +279,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Indicador de estado
           Row(
             children: [
               if (_isRecording) ...[
@@ -337,8 +308,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          
-          // Texto transcrito
           Expanded(
             child: SingleChildScrollView(
               child: AnimatedDefaultTextStyle(
@@ -368,7 +337,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
   
-  /// Punto pulsante para indicar grabación activa
   Widget _buildPulsingDot() {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.5, end: 1.0),
@@ -391,7 +359,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
 
-  /// Vista de confirmación cuando la grabación terminó
   Widget _buildConfirmationView(bool isDark) {
     final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final secondaryColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
@@ -403,8 +370,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
       child: Column(
         children: [
           const SizedBox(height: AppSpacing.md),
-          
-          // Icono de éxito
           Container(
             width: 72,
             height: 72,
@@ -419,8 +384,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          
-          // Título
           Text(
             '¡Listo!',
             style: AppTypography.titleMedium.copyWith(
@@ -435,8 +398,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
           ),
           
           const SizedBox(height: AppSpacing.xl),
-          
-          // Tarjeta con el texto transcrito
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -477,8 +438,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
           ),
           
           const SizedBox(height: AppSpacing.xl),
-          
-          // Botones de acción
           _buildConfirmationButtons(isDark),
           
           const SizedBox(height: AppSpacing.lg),
@@ -487,14 +446,12 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
   
-  /// Botones de acción para confirmación
   Widget _buildConfirmationButtons(bool isDark) {
     final primaryColor = isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
     final secondaryColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     
     return Column(
       children: [
-        // Botón principal de confirmar
         SizedBox(
           width: double.infinity,
           height: 56,
@@ -520,8 +477,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
         ),
         
         const SizedBox(height: AppSpacing.md),
-        
-        // Botón secundario para re-grabar
         SizedBox(
           width: double.infinity,
           height: 48,
@@ -552,271 +507,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
 
-  Widget _buildInstruction(bool isDark) {
-    final textColor = isDark
-        ? AppColors.textPrimaryDark
-        : AppColors.textPrimary;
-    final secondaryColor = isDark
-        ? AppColors.textSecondaryDark
-        : AppColors.textSecondary;
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(scale: animation, child: child),
-        );
-      },
-      child: Column(
-        key: ValueKey(
-          _isRecording
-              ? 'recording'
-              : _isProcessing
-              ? 'processing'
-              : 'idle',
-        ),
-        children: [
-          Text(
-            _isRecording
-                ? 'Escuchando...'
-                : _isProcessing
-                ? 'Procesando...'
-                : 'Toca el micrófono para grabar',
-            style: AppTypography.titleSmall.copyWith(color: textColor),
-            textAlign: TextAlign.center,
-          ),
-          if (!_isRecording && !_isProcessing && _transcription == null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Di tu recordatorio en voz alta',
-              style: AppTypography.bodyMedium.copyWith(color: secondaryColor),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusText(bool isDark) {
-    final helperColor = isDark
-        ? AppColors.textHelperDark
-        : AppColors.textHelper;
-    final primaryColor = isDark
-        ? AppColors.accentPrimaryDark
-        : AppColors.accentPrimary;
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
-      child: Text(
-        key: ValueKey(_isRecording),
-        _isRecording ? 'Toca para detener' : 'Toca para hablar',
-        style: AppTypography.helper.copyWith(
-          color: _isRecording ? primaryColor : helperColor,
-          fontWeight: _isRecording ? FontWeight.w500 : FontWeight.w400,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProcessingIndicator(bool isDark) {
-    final primaryColor = isDark
-        ? AppColors.accentPrimaryDark
-        : AppColors.accentPrimary;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 100,
-          child: LinearProgressIndicator(
-            backgroundColor: primaryColor.withValues(alpha: 0.2),
-            valueColor: AlwaysStoppedAnimation(primaryColor),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Transcribiendo audio...',
-          style: AppTypography.helper.copyWith(
-            color: isDark ? AppColors.textHelperDark : AppColors.textHelper,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTranscriptionArea(bool isDark) {
-    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
-    final borderColor = isDark ? AppColors.outlineDark : AppColors.divider;
-    final textColor = isDark
-        ? AppColors.textPrimaryDark
-        : AppColors.textPrimary;
-    final labelColor = isDark
-        ? AppColors.textSecondaryDark
-        : AppColors.textSecondary;
-    final primaryColor = isDark
-        ? AppColors.accentPrimaryDark
-        : AppColors.accentPrimary;
-    final secondaryColor = isDark
-        ? AppColors.accentSecondaryDark
-        : AppColors.accentSecondary;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: bgColor.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            border: Border.all(color: borderColor, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: secondaryColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      Icons.check_circle_rounded,
-                      size: 18,
-                      color: secondaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Tu recordatorio',
-                    style: AppTypography.label.copyWith(
-                      color: labelColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: secondaryColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    ),
-                    child: Text(
-                      '✓ Listo',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: secondaryColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              // Transcripción
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                ),
-                child: Text(
-                  '"$_transcription"',
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: textColor,
-                    fontStyle: FontStyle.italic,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              // Botón editar
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    // TODO: Implementar edición
-                  },
-                  icon: Icon(Icons.edit_rounded, size: 18, color: primaryColor),
-                  label: Text('Editar', style: TextStyle(color: primaryColor)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(bool isDark) {
-    return Column(
-      children: [
-        // Botón principal - Confirmar
-        SizedBox(
-          width: double.infinity,
-          height: AppSpacing.buttonHeight,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              // TODO: Implementar confirmación
-              _showSuccessAndClose();
-            },
-            icon: const Icon(Icons.check_rounded, size: 22),
-            label: const Text('Confirmar recordatorio'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isDark
-                  ? AppColors.accentSecondaryDark
-                  : AppColors.accentSecondary,
-              elevation: 3,
-              shadowColor:
-                  (isDark
-                          ? AppColors.accentSecondaryDark
-                          : AppColors.accentSecondary)
-                      .withValues(alpha: 0.4),
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        // Botón secundario - Volver a grabar
-        SizedBox(
-          width: double.infinity,
-          height: AppSpacing.buttonHeightSm,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              setState(() {
-                _transcription = null;
-              });
-
-            },
-            icon: const Icon(Icons.mic_rounded, size: 20),
-            label: const Text('Volver a grabar'),
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<void> _toggleRecording() async {
     HapticFeedback.mediumImpact();
     
@@ -837,23 +527,14 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     }
     
     if (_isRecording) {
-      // Detener grabación
       await _speechService.stopListening();
-      setState(() {
-        _isRecording = false;
-        if (_transcription != null && _transcription!.isNotEmpty) {
-
-        }
-      });
+      setState(() => _isRecording = false);
     } else {
-      // Iniciar grabación
       setState(() {
         _isRecording = true;
         _transcription = null;
         _error = null;
       });
-
-      
       try {
         await _speechService.startListening(
           onResult: (text, isFinal) {
@@ -862,10 +543,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
                 _transcription = text;
               });
               if (isFinal && text.isNotEmpty) {
-                setState(() {
-                  _isRecording = false;
-                });
-
+                setState(() => _isRecording = false);
               }
             }
           },
