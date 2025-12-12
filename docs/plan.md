@@ -19,58 +19,70 @@
 - [x] Configuración de dependencias base (`get_it`)
 - [x] Tema y colores de la app
 - [x] Dependencias en `pubspec.yaml`
+- [x] **Capa de infraestructura (Drift + SQLite)**
+- [x] **Implementación del repositorio (`ReminderRepositoryDriftImpl`)**
+- [x] **Cubits para gestión de estado (`ReminderListCubit`, `ReminderSummaryCubit`)**
+- [x] **Inyección de dependencias funcional**
+- [x] **Grabación y transcripción de voz real (`speech_to_text`)**
+- [x] **Permisos Android/iOS configurados para micrófono**
+- [x] **UX de grabación premium (transcripción en tiempo real, estados claros)**
+- [x] **Creación de recordatorio mock desde voz (datos fijos)**
 
-### ❌ Pendiente
-- [ ] Capa de infraestructura (modelo + base de datos SQLite)
-- [ ] Implementación del repositorio
-- [ ] Cubits para gestión de estado
-- [ ] Inyección de dependencias funcional
-- [ ] Formulario de creación/edición de recordatorios
-- [ ] Funcionalidad de grabación de voz
-- [ ] Integración con APIs de IA (Whisper + Gemini)
-- [ ] Notificaciones locales
+### ⏳ En Progreso
+- [ ] **Clasificación inteligente con IA** (Fase 6 - actualmente usa datos mock)
+  - Parsear transcripción → extraer título, tipo, fecha, hora
+
+### ❌ Pendiente (por Funcionalidad según docs/requerimientos-funcionales.md)
+
+| Funcionalidad | Detalle | Fase |
+|---------------|---------|------|
+| **F1: Creación por voz** | IA extrae título/tipo/fecha de transcripción | 6 |
+| **F2: Patrones recurrentes** | Detectar y sugerir recordatorios repetidos | Futuro |
+| **F3: Notas de ubicación** | Guardar y consultar "¿dónde dejé X?" | Futuro |
+| **F4: Notificaciones** | Alertas a la hora programada | 7 |
+| **F5: Accesibilidad** | Texto configurable, guías de voz | Parcial ✓ |
+
+### 📊 Comparación con Requerimientos
+
+| Requerimiento (docs/) | Estado Actual |
+|-----------------------|---------------|
+| Grabar con un toque | ✅ Implementado |
+| Transcribir < 3s | ✅ Tiempo real |
+| IA extrae título/tipo/fecha | ❌ Usa mock |
+| Usuario edita antes de confirmar | ⚠️ No editable aún |
+| Programar notificación | ❌ Fase 7 |
 
 ---
 
 ## 🎯 Fases de Implementación
 
-### Fase 1: Base de Datos y Repositorio (Prioridad Alta)
+### Fase 1: Base de Datos y Repositorio ✅ COMPLETADA
 **Objetivo**: Poder guardar, leer, actualizar y eliminar recordatorios en SQLite.
 
 | # | Tarea | Archivo(s) | Estado |
 |---|-------|-----------|--------|
-| 1.1 | Crear `ReminderModel` (mapeo DB ↔ Entity) | `lib/features/reminders/infrastructure/models/reminder_model.dart` | ⏳ |
-| 1.2 | Crear `DatabaseHelper` (inicialización SQLite) | `lib/core/database/database_helper.dart` | ⏳ |
-| 1.3 | Crear `LocalReminderDataSource` | `lib/features/reminders/infrastructure/datasources/local_reminder_datasource.dart` | ⏳ |
-| 1.4 | Implementar `ReminderRepositoryImpl` | `lib/features/reminders/infrastructure/repositories/reminder_repository_impl.dart` | ⏳ |
-| 1.5 | **Probar**: CRUD básico con datos de prueba | Test manual en la app | ⏳ |
+| 1.1 | Crear `ReminderModel` (mapeo DB ↔ Entity) | Drift genera modelos | ✅ |
+| 1.2 | Crear `DatabaseHelper` (inicialización SQLite) | `lib/core/database/drift/app_database.dart` | ✅ |
+| 1.3 | Crear `LocalReminderDataSource` | Integrado en Drift | ✅ |
+| 1.4 | Implementar `ReminderRepositoryImpl` | `lib/features/reminders/infrastructure/repositories/reminder_repository_drift_impl.dart` | ✅ |
+| 1.5 | **Probar**: CRUD básico con datos de prueba | Test manual en la app | ✅ |
 
-**Criterios de éxito Fase 1**:
-- [ ] Puedo guardar un recordatorio en SQLite
-- [ ] Puedo recuperar todos los recordatorios
-- [ ] Puedo actualizar un recordatorio
-- [ ] Puedo eliminar un recordatorio
-- [ ] Los datos persisten después de reiniciar la app
+**Criterios de éxito Fase 1**: ✅ TODOS CUMPLIDOS
 
 ---
 
-### Fase 2: Gestión de Estado (Cubit)
+### Fase 2: Gestión de Estado (Cubit) ✅ COMPLETADA
 **Objetivo**: Conectar la UI con el repositorio mediante Cubits.
 
 | # | Tarea | Archivo(s) | Estado |
 |---|-------|-----------|--------|
-| 2.1 | Crear estados del Cubit (`sealed class`) | `lib/features/reminders/application/cubit/reminder_list_state.dart` | ⏳ |
-| 2.2 | Crear `ReminderListCubit` | `lib/features/reminders/application/cubit/reminder_list_cubit.dart` | ⏳ |
-| 2.3 | Configurar inyección de dependencias | `lib/di/injection_container.dart` | ⏳ |
-| 2.4 | Conectar `ReminderListPage` con Cubit | `lib/features/reminders/presentation/pages/reminder_list_page.dart` | ⏳ |
-| 2.5 | **Probar**: La lista muestra recordatorios de la BD | Test manual en la app | ⏳ |
+| 2.1 | Crear estados del Cubit (`sealed class`) | `lib/features/reminders/application/cubit/reminder_list_state.dart` | ✅ |
+| 2.2 | Crear `ReminderListCubit` | `lib/features/reminders/application/cubit/reminder_list_cubit.dart` | ✅ |
+| 2.3 | Configurar inyección de dependencias | `lib/di/injection_container.dart` | ✅ |
+| 2.4 | Conectar `ReminderListPage` con Cubit | `lib/features/reminders/presentation/pages/reminder_list_page.dart` | ✅ |
+| 2.5 | **Probar**: La lista muestra recordatorios de la BD | Test manual en la app | ✅ |
 
-**Criterios de éxito Fase 2**:
-- [ ] La página de lista carga recordatorios automáticamente
-- [ ] Se muestra estado de carga (loading)
-- [ ] Se muestra estado vacío cuando no hay datos
-- [ ] Se muestra mensaje de error si falla
-- [ ] Los filtros funcionan (Todos, Hoy, Pendientes, Completados)
+**Criterios de éxito Fase 2**: ✅ TODOS CUMPLIDOS
 
 ---
 
@@ -114,23 +126,24 @@
 
 ---
 
-### Fase 5: Grabación de Voz
+### Fase 5: Grabación de Voz ✅ COMPLETADA
 **Objetivo**: Grabar audio y transcribir usando el dispositivo o Whisper API.
 
 | # | Tarea | Archivo(s) | Estado |
 |---|-------|-----------|--------|
-| 5.1 | Agregar dependencias de audio (`record`) | `pubspec.yaml` | ⏳ |
-| 5.2 | Crear servicio de grabación | `lib/services/audio/audio_recorder_service.dart` | ⏳ |
-| 5.3 | Implementar UI de grabación | `lib/features/voice_recording/presentation/pages/voice_recording_page.dart` | ⏳ |
-| 5.4 | Crear servicio de transcripción (STT) | `lib/services/speech_to_text/stt_service.dart` | ⏳ |
-| 5.5 | **Probar**: Grabar y transcribir audio | Test manual en la app | ⏳ |
+| 5.1 | Agregar dependencias de audio (`speech_to_text`) | `pubspec.yaml` | ✅ |
+| 5.2 | Crear servicio de transcripción (STT) | `lib/services/speech_to_text/speech_to_text_service.dart` | ✅ |
+| 5.3 | Implementar UI de grabación | `lib/features/voice_recording/presentation/pages/voice_recording_page.dart` | ✅ |
+| 5.4 | Integrar STT con UI | Conectados | ✅ |
+| 5.5 | **Probar**: Grabar y transcribir audio | Test manual en dispositivo real | ✅ |
 
-**Criterios de éxito Fase 5**:
-- [ ] Permisos de micrófono se solicitan correctamente
-- [ ] Se puede iniciar/detener grabación
-- [ ] Feedback visual durante grabación (ondas, tiempo)
-- [ ] Audio se transcribe a texto
-- [ ] Transcripción se muestra al usuario
+**Criterios de éxito Fase 5**: ✅ TODOS CUMPLIDOS
+- [x] Permisos de micrófono se solicitan correctamente (iOS/Android)
+- [x] Se puede iniciar/detener grabación
+- [x] Feedback visual durante grabación (ondas, animaciones)
+- [x] Audio se transcribe a texto (reconocimiento nativo en español)
+- [x] Transcripción se muestra al usuario
+- [x] Recordatorio se guarda en BD al confirmar
 
 ---
 
@@ -174,9 +187,7 @@
 
 ## 🚀 Próximo Paso
 
-**Iniciar con Fase 1.1**: Crear `ReminderModel`
-
-Este modelo convierte entre la entidad de dominio (`Reminder`) y el mapa de la base de datos SQLite.
+**Fase 6**: Clasificación con IA (Gemini) para extraer automáticamente título, tipo, fecha y hora del recordatorio.
 
 ---
 
@@ -247,4 +258,4 @@ lib/
 
 ---
 
-*Documento actualizado: 11 de diciembre de 2025*
+*Documento actualizado: 12 de diciembre de 2025*
