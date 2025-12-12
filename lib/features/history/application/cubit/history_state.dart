@@ -14,13 +14,8 @@ final class HistoryLoading extends HistoryState {
 }
 
 final class HistoryLoaded extends HistoryState {
-  /// Recordatorios completados (ordenados desc por completedAt).
   final List<Reminder> completed;
-
-  /// Cantidad completada en el mes actual.
   final int completedThisMonth;
-
-  /// Total completados.
   final int completedTotal;
 
   const HistoryLoaded({

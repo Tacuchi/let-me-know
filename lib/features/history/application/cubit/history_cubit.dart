@@ -17,8 +17,6 @@ class HistoryCubit extends Cubit<HistoryState> {
     if (_sub != null) return;
 
     emit(const HistoryLoading());
-
-    // Carga inicial (evita loading prolongado si el stream tarda en emitir).
     unawaited(refresh());
 
     _sub = _repository.watchAll().listen(

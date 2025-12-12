@@ -10,9 +10,6 @@ import '../../../../core/core.dart';
 import '../../../reminders/application/cubit/reminder_summary_cubit.dart';
 import '../../../reminders/application/cubit/reminder_summary_state.dart';
 
-/// Página principal de la aplicación
-/// Muestra reloj, resumen del día y acceso rápido a crear recordatorios
-/// Diseño moderno con animaciones fluidas (2025)
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -34,14 +31,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Timer para el reloj
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _currentTime = DateTime.now();
       });
     });
 
-    // Configurar animaciones de entrada
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -60,7 +55,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
         );
 
-    // Iniciar animaciones
     _fadeController.forward();
     _slideController.forward();
   }
@@ -95,7 +89,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // Header
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -107,8 +100,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: _buildHeader(isDark),
                   ),
                 ),
-
-                // Reloj
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -120,8 +111,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: _buildAnimatedClock(isDark),
                   ),
                 ),
-
-                // Saludo
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -133,8 +122,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: _buildGreeting(isDark),
                   ),
                 ),
-
-                // Resumen del día
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -146,8 +133,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: _buildSummaryCard(isDark),
                   ),
                 ),
-
-                // Próximos recordatorios
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -159,8 +144,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: _buildUpcomingSection(isDark),
                   ),
                 ),
-
-                // Espacio extra para el bottom nav
                 const SliverToBoxAdapter(child: SizedBox(height: 120)),
               ],
             ),
@@ -187,9 +170,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
         Row(
           children: [
-            // Botón de tema (nuevo - tendencia 2025)
             _ThemeToggleButton(isDark: isDark),
-            // Botón de ayuda
             IconButton(
               icon: const Icon(Icons.help_outline_rounded, size: 24),
               tooltip: 'Ayuda',
@@ -265,7 +246,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
           child: Column(
             children: [
-              // Hora con animación
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -314,7 +294,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              // Fecha
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -389,7 +368,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
@@ -417,7 +395,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          // Contadores animados
           Builder(
             builder: (context) {
               final hasProvider =
@@ -558,7 +535,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
       child: Column(
         children: [
-          // Ícono animado
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.8, end: 1.0),
             duration: const Duration(milliseconds: 600),
@@ -792,7 +768,6 @@ class _ThemeToggleButtonState extends State<_ThemeToggleButton>
         color: secondaryColor,
         onPressed: () {
           HapticFeedback.lightImpact();
-          // Cambiar el tema de la aplicación
           LetMeKnowApp.of(context).toggleTheme();
         },
       ),

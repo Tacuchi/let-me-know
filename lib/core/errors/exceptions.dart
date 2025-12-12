@@ -1,4 +1,3 @@
-/// Clase base para excepciones de la aplicación
 sealed class AppException implements Exception {
   final String message;
   final String? code;
@@ -9,19 +8,16 @@ sealed class AppException implements Exception {
   String toString() => 'AppException: $message (code: $code)';
 }
 
-/// Excepción de servidor o API
 class ServerException extends AppException {
   final int? statusCode;
 
   const ServerException({required super.message, super.code, this.statusCode});
 }
 
-/// Excepción de caché o almacenamiento local
 class CacheException extends AppException {
   const CacheException({required super.message, super.code});
 }
 
-/// Excepción de red/conexión
 class NetworkException extends AppException {
   const NetworkException({
     super.message = 'Sin conexión a internet',
@@ -29,12 +25,10 @@ class NetworkException extends AppException {
   });
 }
 
-/// Excepción de validación
 class ValidationException extends AppException {
   const ValidationException({required super.message, super.code});
 }
 
-/// Excepción de permisos
 class PermissionException extends AppException {
   final String permission;
 

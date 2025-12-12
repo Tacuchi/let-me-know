@@ -14,13 +14,9 @@ class ReminderListCubit extends Cubit<ReminderListState> {
   ReminderListCubit(this._repository) : super(const ReminderListLoading());
 
   void start() {
-    // Evitar doble subscripción.
     if (_sub != null) return;
 
     emit(const ReminderListLoading());
-
-    // Cargar una vez inmediatamente para evitar quedarnos en loading
-    // si el stream tarda en emitir por primera vez.
     unawaited(refresh());
 
     _sub = _repository.watchAll().listen(
@@ -56,8 +52,6 @@ class ReminderListCubit extends Cubit<ReminderListState> {
   Future<void> markAsCompleted(String id) async {
     try {
       await _repository.markAsCompleted(id);
-      // No emitimos manualmente: el stream debería actualizar; pero hacemos refresh
-      // como fallback (sqflite no es reactivo nativo).
       await refresh();
     } catch (_) {
       emit(const ReminderListError('No se pudo completar el recordatorio'));

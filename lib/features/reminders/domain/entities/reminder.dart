@@ -5,32 +5,26 @@ import 'reminder_source.dart';
 import 'reminder_status.dart';
 import 'reminder_type.dart';
 
-/// Entidad de dominio que representa un recordatorio
-/// Inmutable y sin dependencias de framework
 class Reminder extends Equatable {
   final String id;
   final String title;
   final String description;
 
-  /// Fecha/hora del recordatorio.
-  /// - null para notas (p.ej. ubicación) que no requieren notificación.
+  /// null para notas (ej. ubicación) que no requieren notificación.
   final DateTime? scheduledAt;
   final ReminderType type;
   final ReminderStatus status;
   final ReminderImportance importance;
   final ReminderSource source;
 
-  /// Metadatos para notas de ubicación (type == location).
   final String? object;
   final String? location;
 
-  /// Notificaciones
   final bool hasNotification;
   final int? notificationId;
   final DateTime? lastNotifiedAt;
   final DateTime? snoozedUntil;
 
-  /// Recurrencia (mínimo viable)
   final String? recurrenceGroupId;
   final String? recurrenceRule;
 
@@ -60,7 +54,6 @@ class Reminder extends Equatable {
     this.completedAt,
   });
 
-  /// Crea una copia del recordatorio con los campos actualizados
   Reminder copyWith({
     String? id,
     String? title,
@@ -105,13 +98,11 @@ class Reminder extends Equatable {
     );
   }
 
-  /// Verifica si el recordatorio está vencido
   bool get isOverdue =>
       status == ReminderStatus.pending &&
       scheduledAt != null &&
       scheduledAt!.isBefore(DateTime.now());
 
-  /// Verifica si el recordatorio es próximo (menos de 2 horas)
   bool get isUpcoming {
     if (status != ReminderStatus.pending) return false;
     if (scheduledAt == null) return false;
@@ -119,7 +110,6 @@ class Reminder extends Equatable {
     return diff.inHours < 2 && diff.inMinutes > 0;
   }
 
-  /// Verifica si el recordatorio es para hoy
   bool get isToday {
     if (scheduledAt == null) return false;
     final now = DateTime.now();

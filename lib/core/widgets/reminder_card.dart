@@ -6,8 +6,6 @@ import '../../features/reminders/domain/entities/reminder.dart';
 import '../../features/reminders/domain/entities/reminder_type.dart';
 import '../../features/reminders/domain/entities/reminder_status.dart';
 
-/// Tarjeta de recordatorio con diseño moderno y gestos
-/// Soporta swipe para completar/eliminar
 class ReminderCard extends StatefulWidget {
   final Reminder reminder;
   final VoidCallback? onTap;
@@ -127,7 +125,6 @@ class _ReminderCardState extends State<ReminderCard>
               children: [
                 Row(
                   children: [
-                    // Icono del tipo
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.sm),
                       decoration: BoxDecoration(
@@ -139,7 +136,6 @@ class _ReminderCardState extends State<ReminderCard>
                       child: Icon(_typeIcon, size: 22, color: _borderColor),
                     ),
                     const SizedBox(width: AppSpacing.sm),
-                    // Título
                     Expanded(
                       child: Text(
                         widget.reminder.title,
@@ -158,7 +154,6 @@ class _ReminderCardState extends State<ReminderCard>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // Indicador de estado
                     if (isOverdue)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -189,7 +184,6 @@ class _ReminderCardState extends State<ReminderCard>
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                // Fecha y hora (si aplica)
                 if (widget.reminder.scheduledAt != null)
                   Row(
                     children: [
@@ -213,7 +207,6 @@ class _ReminderCardState extends State<ReminderCard>
                       ),
                     ],
                   ),
-                // Barra de progreso (si aplica)
                 if (widget.showProgress &&
                     widget.reminder.scheduledAt != null &&
                     !isCompleted &&
@@ -228,7 +221,6 @@ class _ReminderCardState extends State<ReminderCard>
       ),
     );
 
-    // Envolver en Dismissible para gestos swipe
     if (widget.onComplete != null || widget.onDelete != null) {
       card = Dismissible(
         key: Key(widget.reminder.id),
@@ -236,13 +228,11 @@ class _ReminderCardState extends State<ReminderCard>
         confirmDismiss: (direction) async {
           HapticFeedback.mediumImpact();
           if (direction == DismissDirection.endToStart) {
-            // Eliminar
             widget.onDelete?.call();
             return widget.onDelete != null;
           } else if (direction == DismissDirection.startToEnd) {
-            // Completar
             widget.onComplete?.call();
-            return false; // No eliminar, solo marcar completado
+            return false;
           }
           return false;
         },

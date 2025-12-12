@@ -1,6 +1,3 @@
-/// Importancia/prioridad del recordatorio.
-///
-/// Se usará para notificaciones inteligentes y UI.
 enum ReminderImportance { high, medium, low, info }
 
 extension ReminderImportanceX on ReminderImportance {
