@@ -39,4 +39,3 @@ extension NullableStringExtensions on String? {
   /// Retorna el valor o un string por defecto
   String orDefault([String defaultValue = '']) => this ?? defaultValue;
 }
-

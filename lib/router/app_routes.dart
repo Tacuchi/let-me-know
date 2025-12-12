@@ -17,4 +17,3 @@ abstract final class AppRoutes {
   static const String historyName = 'history';
   static const String settingsName = 'settings';
 }
-

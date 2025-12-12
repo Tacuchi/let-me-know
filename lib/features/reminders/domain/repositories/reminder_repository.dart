@@ -31,4 +31,3 @@ abstract class ReminderRepository {
   /// Observa cambios en los recordatorios de hoy
   Stream<List<Reminder>> watchForToday();
 }
-

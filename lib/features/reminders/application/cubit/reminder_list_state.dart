@@ -44,8 +44,9 @@ final class ReminderListLoaded extends ReminderListState {
         all
             .where(
               (r) =>
-                  !r.scheduledAt.isBefore(today) &&
-                  r.scheduledAt.isBefore(tomorrow),
+                  r.scheduledAt != null &&
+                  !r.scheduledAt!.isBefore(today) &&
+                  r.scheduledAt!.isBefore(tomorrow),
             )
             .toList(growable: false),
       ReminderListFilter.pending =>

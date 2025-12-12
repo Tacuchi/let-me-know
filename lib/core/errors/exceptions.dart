@@ -3,10 +3,7 @@ sealed class AppException implements Exception {
   final String message;
   final String? code;
 
-  const AppException({
-    required this.message,
-    this.code,
-  });
+  const AppException({required this.message, this.code});
 
   @override
   String toString() => 'AppException: $message (code: $code)';
@@ -16,19 +13,12 @@ sealed class AppException implements Exception {
 class ServerException extends AppException {
   final int? statusCode;
 
-  const ServerException({
-    required super.message,
-    super.code,
-    this.statusCode,
-  });
+  const ServerException({required super.message, super.code, this.statusCode});
 }
 
 /// Excepción de caché o almacenamiento local
 class CacheException extends AppException {
-  const CacheException({
-    required super.message,
-    super.code,
-  });
+  const CacheException({required super.message, super.code});
 }
 
 /// Excepción de red/conexión
@@ -41,10 +31,7 @@ class NetworkException extends AppException {
 
 /// Excepción de validación
 class ValidationException extends AppException {
-  const ValidationException({
-    required super.message,
-    super.code,
-  });
+  const ValidationException({required super.message, super.code});
 }
 
 /// Excepción de permisos
@@ -57,4 +44,3 @@ class PermissionException extends AppException {
     super.code,
   });
 }
-

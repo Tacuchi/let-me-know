@@ -18,6 +18,9 @@ enum ReminderType {
 
   /// Eventos, reuniones
   event,
+
+  /// Nota de ubicación / objeto (sin fecha)
+  location,
 }
 
 /// Extensión para obtener información del tipo de recordatorio
@@ -31,6 +34,7 @@ extension ReminderTypeExtension on ReminderType {
       ReminderType.shopping => 'Compras',
       ReminderType.task => 'Tarea',
       ReminderType.event => 'Evento',
+      ReminderType.location => 'Ubicación',
     };
   }
 
@@ -46,6 +50,7 @@ extension ReminderTypeExtension on ReminderType {
       ReminderType.shopping => '🛒',
       ReminderType.task => '📝',
       ReminderType.event => '📅',
+      ReminderType.location => '📍',
     };
   }
 }

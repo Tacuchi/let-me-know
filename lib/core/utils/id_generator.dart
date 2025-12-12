@@ -10,4 +10,3 @@ abstract final class IdGenerator {
   /// Genera un ID corto (8 caracteres)
   static String generateShort() => _uuid.v4().substring(0, 8);
 }
-

@@ -68,4 +68,3 @@ extension DateExtensions on DateTime {
   /// Diferencia en minutos desde ahora
   int get minutesFromNow => difference(DateTime.now()).inMinutes;
 }
-

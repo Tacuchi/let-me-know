@@ -26,13 +26,15 @@ dependencies:
   get_it: ^8.0.3                 # Service locator
 
   # Base de datos local
-  sqflite: ^2.4.1                # SQLite para Flutter
   path_provider: ^2.1.5          # Acceso a directorios del sistema
   path: ^1.9.1                   # Manipulación de rutas
 
   # Utilidades
   intl: ^0.20.1                  # Internacionalización y formato de fechas
   uuid: ^4.5.1                   # Generación de IDs únicos
+  drift: ^2.30.0
+  drift_flutter: ^0.2.8
+  sqlite3_flutter_libs: ^0.5.41
 
   # Audio/Voz (para futuras features)
   # record: ^5.1.2              # Grabación de audio
@@ -51,6 +53,8 @@ dev_dependencies:
   # Testing
   bloc_test: ^9.1.7              # Testing de Cubits/BLoCs
   mocktail: ^1.0.4               # Mocking para tests
+  drift_dev: ^2.30.0
+  build_runner: ^2.10.4
 
 flutter:
   uses-material-design: true

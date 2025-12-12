@@ -6,10 +6,7 @@ sealed class Failure extends Equatable {
   final String message;
   final String? code;
 
-  const Failure({
-    required this.message,
-    this.code,
-  });
+  const Failure({required this.message, this.code});
 
   @override
   List<Object?> get props => [message, code];
@@ -41,10 +38,7 @@ class NetworkFailure extends Failure {
 
 /// Fallo de validación
 class ValidationFailure extends Failure {
-  const ValidationFailure({
-    required super.message,
-    super.code,
-  });
+  const ValidationFailure({required super.message, super.code});
 }
 
 /// Fallo de permisos
@@ -68,4 +62,3 @@ class UnexpectedFailure extends Failure {
     super.code,
   });
 }
-

@@ -32,4 +32,3 @@ abstract final class AppSpacing {
   static const double touchTargetMin = 44.0;
   static const double touchTargetRecommended = 48.0;
 }
-

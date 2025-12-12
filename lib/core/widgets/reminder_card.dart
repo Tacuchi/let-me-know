@@ -66,6 +66,8 @@ class _ReminderCardState extends State<ReminderCard>
         return AppColors.reminderTask;
       case ReminderType.event:
         return AppColors.reminderEvent;
+      case ReminderType.location:
+        return AppColors.reminderEvent; // fallback (se puede refinar luego)
     }
   }
 
@@ -83,6 +85,8 @@ class _ReminderCardState extends State<ReminderCard>
         return Icons.task_alt_rounded;
       case ReminderType.event:
         return Icons.event_rounded;
+      case ReminderType.location:
+        return Icons.place_rounded;
     }
   }
 
@@ -185,31 +189,35 @@ class _ReminderCardState extends State<ReminderCard>
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                // Fecha y hora
-                Row(
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: 16,
-                      color: isDark
-                          ? AppColors.textHelperDark
-                          : AppColors.textHelper,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      _formatDateTime(widget.reminder.scheduledAt),
-                      style: AppTypography.bodySmall.copyWith(
-                        color: isOverdue
-                            ? AppColors.error
-                            : (isDark
-                                  ? AppColors.textSecondaryDark
-                                  : AppColors.textSecondary),
+                // Fecha y hora (si aplica)
+                if (widget.reminder.scheduledAt != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 16,
+                        color: isDark
+                            ? AppColors.textHelperDark
+                            : AppColors.textHelper,
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        _formatDateTime(widget.reminder.scheduledAt!),
+                        style: AppTypography.bodySmall.copyWith(
+                          color: isOverdue
+                              ? AppColors.error
+                              : (isDark
+                                    ? AppColors.textSecondaryDark
+                                    : AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
                 // Barra de progreso (si aplica)
-                if (widget.showProgress && !isCompleted && !isOverdue) ...[
+                if (widget.showProgress &&
+                    widget.reminder.scheduledAt != null &&
+                    !isCompleted &&
+                    !isOverdue) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _buildProgressIndicator(isDark),
                 ],
@@ -260,7 +268,7 @@ class _ReminderCardState extends State<ReminderCard>
       button: true,
       label:
           '${widget.reminder.type.label}: ${widget.reminder.title}. '
-          '${_formatDateTime(widget.reminder.scheduledAt)}. '
+          '${widget.reminder.scheduledAt == null ? 'Sin fecha' : _formatDateTime(widget.reminder.scheduledAt!)}. '
           '${isCompleted
               ? 'Completado'
               : isOverdue
@@ -329,7 +337,7 @@ class _ReminderCardState extends State<ReminderCard>
 
   Widget _buildProgressIndicator(bool isDark) {
     final now = DateTime.now();
-    final scheduled = widget.reminder.scheduledAt;
+    final scheduled = widget.reminder.scheduledAt!;
     final difference = scheduled.difference(now);
 
     String timeText;

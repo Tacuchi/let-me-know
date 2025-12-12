@@ -116,7 +116,9 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final primaryColor = isDark
+        ? AppColors.accentPrimaryDark
+        : AppColors.accentPrimary;
     final recordingColor = AppColors.recording;
 
     return Semantics(
@@ -171,13 +173,20 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: widget.isRecording
-                          ? [recordingColor, recordingColor.withValues(alpha: 0.8)]
-                          : [primaryColor, primaryColor.withValues(alpha: 0.85)],
+                          ? [
+                              recordingColor,
+                              recordingColor.withValues(alpha: 0.8),
+                            ]
+                          : [
+                              primaryColor,
+                              primaryColor.withValues(alpha: 0.85),
+                            ],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (widget.isRecording ? recordingColor : primaryColor)
-                            .withValues(alpha: 0.4),
+                        color:
+                            (widget.isRecording ? recordingColor : primaryColor)
+                                .withValues(alpha: 0.4),
                         blurRadius: widget.isRecording ? 24 : 16,
                         offset: const Offset(0, 6),
                         spreadRadius: widget.isRecording ? 2 : 0,
@@ -187,7 +196,9 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
-                      widget.isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+                      widget.isRecording
+                          ? Icons.stop_rounded
+                          : Icons.mic_rounded,
                       key: ValueKey(widget.isRecording),
                       color: Colors.white,
                       size: widget.size * 0.45,
