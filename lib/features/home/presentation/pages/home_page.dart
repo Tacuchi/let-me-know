@@ -3,12 +3,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app.dart';
 import '../../../../core/core.dart';
+import '../../../../router/app_routes.dart';
 import '../../../reminders/application/cubit/reminder_summary_cubit.dart';
 import '../../../reminders/application/cubit/reminder_summary_state.dart';
+import '../../../reminders/domain/entities/reminder.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -499,15 +502,51 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             TextButton(
               onPressed: () {
                 HapticFeedback.lightImpact();
-                // Navegar a la lista completa
+                context.goNamed(AppRoutes.remindersName);
               },
               child: const Text('Ver todos'),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        _buildEmptyState(isDark),
+        _buildUpcomingList(isDark),
       ],
+    );
+  }
+
+  Widget _buildUpcomingList(bool isDark) {
+    final hasProvider = context
+            .findAncestorWidgetOfExactType<BlocProvider<ReminderSummaryCubit>>() !=
+        null;
+
+    if (!hasProvider) {
+      return _buildEmptyState(isDark);
+    }
+
+    return BlocBuilder<ReminderSummaryCubit, ReminderSummaryState>(
+      builder: (context, state) {
+        final upcoming =
+            state is ReminderSummaryLoaded ? state.upcoming : <Reminder>[];
+
+        if (upcoming.isEmpty) {
+          return _buildEmptyState(isDark);
+        }
+
+        return Column(
+          children: upcoming.map((reminder) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: ReminderCard(
+                reminder: reminder,
+                showProgress: false,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                },
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
