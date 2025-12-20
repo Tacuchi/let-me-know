@@ -9,9 +9,6 @@ import '../../application/cubit/history_state.dart';
 import '../../../reminders/domain/entities/reminder.dart';
 import '../../../reminders/domain/entities/reminder_type.dart';
 
-/// Página de historial de recordatorios
-/// Muestra los recordatorios completados y pasados
-/// Diseño moderno con soporte para tema oscuro (2025)
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
@@ -51,6 +48,10 @@ class _HistoryPageState extends State<HistoryPage>
 
     return BlocBuilder<HistoryCubit, HistoryState>(
       builder: (context, state) {
+        final hasFilters = state is HistoryLoaded &&
+            (state.periodFilter != HistoryPeriodFilter.all ||
+                state.typeFilter != null);
+
         return Scaffold(
           backgroundColor: bgColor,
           body: SafeArea(
@@ -58,13 +59,9 @@ class _HistoryPageState extends State<HistoryPage>
               opacity: _fadeAnimation,
               child: Column(
                 children: [
-                  // Header
-                  _buildHeader(isDark),
-
-                  // Estadísticas
+                  _buildHeader(isDark, hasFilters),
                   _buildStats(isDark, state),
-
-                  // Lista de historial
+                  if (state is HistoryLoaded) _buildFilters(isDark, state),
                   Expanded(child: _buildHistoryList(isDark, state)),
                 ],
               ),
@@ -75,13 +72,16 @@ class _HistoryPageState extends State<HistoryPage>
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool hasFilters) {
     final textColor = isDark
         ? AppColors.textPrimaryDark
         : AppColors.textPrimary;
     final secondaryColor = isDark
         ? AppColors.textSecondaryDark
         : AppColors.textSecondary;
+    final primaryColor = isDark
+        ? AppColors.accentPrimaryDark
+        : AppColors.accentPrimary;
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
@@ -102,17 +102,190 @@ class _HistoryPageState extends State<HistoryPage>
               ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_list_rounded),
-            tooltip: 'Filtrar',
-            color: secondaryColor,
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              // TODO: Implementar filtros
-            },
-          ),
+          if (hasFilters)
+            TextButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                context.read<HistoryCubit>().clearFilters();
+              },
+              icon: Icon(Icons.clear_all_rounded, color: primaryColor, size: 20),
+              label: Text(
+                'Limpiar',
+                style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilters(bool isDark, HistoryLoaded state) {
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+
+    return Container(
+      color: bgColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPeriodFilters(isDark, state),
+          const SizedBox(height: AppSpacing.sm),
+          _buildTypeFilters(isDark, state),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodFilters(bool isDark, HistoryLoaded state) {
+    final selectedColor = isDark
+        ? AppColors.accentPrimaryDark
+        : AppColors.accentPrimary;
+    final unselectedBg = isDark
+        ? AppColors.bgTertiaryDark
+        : AppColors.bgTertiary;
+    final textColor = isDark
+        ? AppColors.textPrimaryDark
+        : AppColors.textPrimary;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+      child: Row(
+        children: HistoryPeriodFilter.values.map((filter) {
+          final isSelected = state.periodFilter == filter;
+          return Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                context.read<HistoryCubit>().setPeriodFilter(filter);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected ? selectedColor : unselectedBg,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: selectedColor.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Text(
+                  filter.label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : textColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTypeFilters(bool isDark, HistoryLoaded state) {
+    final selectedColor = isDark
+        ? AppColors.accentSecondaryDark
+        : AppColors.accentSecondary;
+    final unselectedBg = isDark
+        ? AppColors.bgTertiaryDark
+        : AppColors.bgTertiary;
+    final textColor = isDark
+        ? AppColors.textPrimaryDark
+        : AppColors.textPrimary;
+    final helperColor = isDark
+        ? AppColors.textHelperDark
+        : AppColors.textHelper;
+
+    final typesInHistory = state.all.map((r) => r.type).toSet().toList();
+    if (typesInHistory.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+          child: Text(
+            'Por tipo',
+            style: AppTypography.label.copyWith(color: helperColor),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+          child: Row(
+            children: typesInHistory.map((type) {
+              final isSelected = state.typeFilter == type;
+              return Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    if (isSelected) {
+                      context.read<HistoryCubit>().setTypeFilter(null);
+                    } else {
+                      context.read<HistoryCubit>().setTypeFilter(type);
+                    }
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? selectedColor : unselectedBg,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: selectedColor.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(type.emoji, style: const TextStyle(fontSize: 16)),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          type.label,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : textColor,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -204,10 +377,9 @@ class _HistoryPageState extends State<HistoryPage>
           child: Text(message),
         ),
       ),
-      HistoryLoaded(:final completed) =>
-        completed.isEmpty
-            ? _buildEmptyState(isDark)
-            : _buildList(isDark, completed),
+      HistoryLoaded() => state.filtered.isEmpty
+          ? _buildEmptyState(isDark, hasFilters: state.periodFilter != HistoryPeriodFilter.all || state.typeFilter != null)
+          : _buildList(isDark, state.filtered),
     };
   }
 
@@ -235,7 +407,7 @@ class _HistoryPageState extends State<HistoryPage>
     return 'Completado: ${formatter.format(dt)}';
   }
 
-  Widget _buildEmptyState(bool isDark) {
+  Widget _buildEmptyState(bool isDark, {bool hasFilters = false}) {
     final textColor = isDark
         ? AppColors.textSecondaryDark
         : AppColors.textSecondary;
@@ -245,6 +417,9 @@ class _HistoryPageState extends State<HistoryPage>
     final accentColor = isDark
         ? AppColors.accentSecondaryDark
         : AppColors.accentSecondary;
+    final primaryColor = isDark
+        ? AppColors.accentPrimaryDark
+        : AppColors.accentPrimary;
 
     return Center(
       child: Padding(
@@ -266,7 +441,7 @@ class _HistoryPageState extends State<HistoryPage>
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.history_rounded,
+                      hasFilters ? Icons.filter_alt_off_rounded : Icons.history_rounded,
                       size: 48,
                       color: accentColor,
                     ),
@@ -276,16 +451,36 @@ class _HistoryPageState extends State<HistoryPage>
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Sin historial aún',
+              hasFilters ? 'Sin resultados' : 'Sin historial aún',
               style: AppTypography.titleSmall.copyWith(color: textColor),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Cuando completes recordatorios,\naparecerán aquí',
+              hasFilters
+                  ? 'No hay recordatorios que coincidan\ncon los filtros seleccionados'
+                  : 'Cuando completes recordatorios,\naparecerán aquí',
               style: AppTypography.bodyMedium.copyWith(color: helperColor),
               textAlign: TextAlign.center,
             ),
+            if (hasFilters) ...[
+              const SizedBox(height: AppSpacing.lg),
+              TextButton.icon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  context.read<HistoryCubit>().clearFilters();
+                },
+                icon: Icon(Icons.clear_all_rounded, color: primaryColor),
+                label: Text(
+                  'Limpiar filtros',
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../reminders/domain/entities/reminder_status.dart';
+import '../../../reminders/domain/entities/reminder_type.dart';
 import '../../../reminders/domain/repositories/reminder_repository.dart';
 import 'history_state.dart';
 
@@ -10,6 +11,8 @@ class HistoryCubit extends Cubit<HistoryState> {
   final ReminderRepository _repository;
 
   StreamSubscription? _sub;
+  HistoryPeriodFilter _periodFilter = HistoryPeriodFilter.all;
+  ReminderType? _typeFilter;
 
   HistoryCubit(this._repository) : super(const HistoryLoading());
 
@@ -24,6 +27,38 @@ class HistoryCubit extends Cubit<HistoryState> {
       onError: (_) =>
           emit(const HistoryError('No se pudo cargar el historial')),
     );
+  }
+
+  void setPeriodFilter(HistoryPeriodFilter filter) {
+    _periodFilter = filter;
+    final current = state;
+    if (current is HistoryLoaded) {
+      emit(current.copyWith(periodFilter: filter));
+    }
+  }
+
+  void setTypeFilter(ReminderType? type) {
+    _typeFilter = type;
+    final current = state;
+    if (current is HistoryLoaded) {
+      if (type == null) {
+        emit(current.copyWith(clearTypeFilter: true));
+      } else {
+        emit(current.copyWith(typeFilter: type));
+      }
+    }
+  }
+
+  void clearFilters() {
+    _periodFilter = HistoryPeriodFilter.all;
+    _typeFilter = null;
+    final current = state;
+    if (current is HistoryLoaded) {
+      emit(current.copyWith(
+        periodFilter: HistoryPeriodFilter.all,
+        clearTypeFilter: true,
+      ));
+    }
   }
 
   Future<void> refresh() async {
@@ -53,9 +88,11 @@ class HistoryCubit extends Cubit<HistoryState> {
 
       emit(
         HistoryLoaded(
-          completed: completed,
+          all: completed,
           completedThisMonth: completedThisMonth,
           completedTotal: completed.length,
+          periodFilter: _periodFilter,
+          typeFilter: _typeFilter,
         ),
       );
     } catch (_) {
