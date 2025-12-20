@@ -4,9 +4,6 @@ import 'package:flutter/services.dart';
 import '../../../../app.dart';
 import '../../../../core/core.dart';
 
-/// Página de configuración
-/// Permite ajustar preferencias de accesibilidad, notificaciones y más
-/// Diseño moderno con soporte para tema oscuro (2025)
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -16,12 +13,10 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage>
     with SingleTickerProviderStateMixin {
-  // Estados de configuración
   bool _voiceGuides = true;
   bool _vibration = true;
   bool _repeatAlert = true;
   bool _improveTranscription = true;
-  int _textSizeIndex = 1; // 0: Normal, 1: Grande, 2: Muy grande
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -345,80 +340,76 @@ class _SettingsPageState extends State<SettingsPage>
     final textColor = isDark
         ? AppColors.textPrimaryDark
         : AppColors.textPrimary;
-    final helperColor = isDark
-        ? AppColors.textHelperDark
-        : AppColors.textHelper;
     final primaryColor = isDark
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
 
     final currentThemeMode = LetMeKnowApp.of(context).themeMode;
 
-    String themeName;
-    switch (currentThemeMode) {
-      case ThemeMode.light:
-        themeName = 'Claro';
-        break;
-      case ThemeMode.dark:
-        themeName = 'Oscuro';
-        break;
-      case ThemeMode.system:
-        themeName = 'Automático';
-        break;
-    }
-
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: primaryColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-          color: primaryColor,
-          size: 22,
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
       ),
-      title: Text(
-        'Tema',
-        style: AppTypography.bodyLarge.copyWith(color: textColor),
-      ),
-      subtitle: Text(
-        themeName,
-        style: AppTypography.helper.copyWith(color: helperColor),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildThemeOption(
-            icon: Icons.light_mode_rounded,
-            isSelected: currentThemeMode == ThemeMode.light,
-            onTap: () {
-              LetMeKnowApp.of(context).setThemeMode(ThemeMode.light);
-            },
-            isDark: isDark,
-            tooltip: 'Tema claro',
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  color: primaryColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'Tema',
+                  style: AppTypography.bodyLarge.copyWith(color: textColor),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.xs),
-          _buildThemeOption(
-            icon: Icons.phone_android_rounded,
-            isSelected: currentThemeMode == ThemeMode.system,
-            onTap: () {
-              LetMeKnowApp.of(context).setThemeMode(ThemeMode.system);
-            },
-            isDark: isDark,
-            tooltip: 'Automático',
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          _buildThemeOption(
-            icon: Icons.dark_mode_rounded,
-            isSelected: currentThemeMode == ThemeMode.dark,
-            onTap: () {
-              LetMeKnowApp.of(context).setThemeMode(ThemeMode.dark);
-            },
-            isDark: isDark,
-            tooltip: 'Tema oscuro',
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _buildThemeOption(
+                  label: 'Claro',
+                  icon: Icons.light_mode_rounded,
+                  isSelected: currentThemeMode == ThemeMode.light,
+                  onTap: () => LetMeKnowApp.of(context).setThemeMode(ThemeMode.light),
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _buildThemeOption(
+                  label: 'Auto',
+                  icon: Icons.phone_android_rounded,
+                  isSelected: currentThemeMode == ThemeMode.system,
+                  onTap: () => LetMeKnowApp.of(context).setThemeMode(ThemeMode.system),
+                  isDark: isDark,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _buildThemeOption(
+                  label: 'Oscuro',
+                  icon: Icons.dark_mode_rounded,
+                  isSelected: currentThemeMode == ThemeMode.dark,
+                  onTap: () => LetMeKnowApp.of(context).setThemeMode(ThemeMode.dark),
+                  isDark: isDark,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -426,11 +417,11 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Widget _buildThemeOption({
+    required String label,
     required IconData icon,
     required bool isSelected,
     required VoidCallback onTap,
     required bool isDark,
-    String? tooltip,
   }) {
     final primaryColor = isDark
         ? AppColors.accentPrimaryDark
@@ -438,34 +429,53 @@ class _SettingsPageState extends State<SettingsPage>
     final unselectedColor = isDark
         ? AppColors.textHelperDark
         : AppColors.textHelper;
+    final textColor = isDark
+        ? AppColors.textPrimaryDark
+        : AppColors.textPrimary;
 
-    return Tooltip(
-      message: tooltip ?? '',
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? primaryColor.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          border: Border.all(
             color: isSelected
-                ? primaryColor.withValues(alpha: 0.15)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected
-                  ? primaryColor
-                  : unselectedColor.withValues(alpha: 0.3),
-              width: 1.5,
+                ? primaryColor
+                : unselectedColor.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: isSelected ? primaryColor : unselectedColor,
             ),
-          ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: isSelected ? primaryColor : unselectedColor,
-          ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? primaryColor : textColor,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -481,30 +491,55 @@ class _SettingsPageState extends State<SettingsPage>
     final primaryColor = isDark
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
-    final sizes = ['Normal', 'Grande', 'Muy grande'];
 
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: primaryColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(Icons.format_size_rounded, color: primaryColor, size: 22),
-      ),
-      title: Text(
-        'Tamaño de texto',
-        style: AppTypography.bodyLarge.copyWith(color: textColor),
-      ),
-      subtitle: Text(
-        sizes[_textSizeIndex],
-        style: AppTypography.helper.copyWith(color: helperColor),
-      ),
-      trailing: Icon(Icons.chevron_right_rounded, color: helperColor),
+    final currentTextSize = LetMeKnowApp.of(context).textSize;
+
+    return InkWell(
       onTap: () {
         HapticFeedback.lightImpact();
         _showTextSizePicker(context, isDark);
       },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.format_size_rounded, color: primaryColor, size: 22),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tamaño de texto',
+                    style: AppTypography.bodyLarge.copyWith(color: textColor),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    currentTextSize.label,
+                    style: AppTypography.helper.copyWith(color: helperColor),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Icon(Icons.chevron_right_rounded, color: helperColor, size: 24),
+          ],
+        ),
+      ),
     );
   }
 
@@ -527,26 +562,50 @@ class _SettingsPageState extends State<SettingsPage>
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
 
-    return SwitchListTile(
-      secondary: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: primaryColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: primaryColor, size: 22),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
       ),
-      title: Text(
-        title,
-        style: AppTypography.bodyLarge.copyWith(color: textColor),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: primaryColor, size: 22),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.bodyLarge.copyWith(color: textColor),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: AppTypography.helper.copyWith(color: helperColor),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: primaryColor,
+          ),
+        ],
       ),
-      subtitle: Text(
-        subtitle,
-        style: AppTypography.helper.copyWith(color: helperColor),
-      ),
-      value: value,
-      onChanged: onChanged,
-      activeTrackColor: primaryColor,
     );
   }
 
@@ -568,25 +627,49 @@ class _SettingsPageState extends State<SettingsPage>
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
 
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: primaryColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: primaryColor, size: 22),
-      ),
-      title: Text(
-        title,
-        style: AppTypography.bodyLarge.copyWith(color: textColor),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: AppTypography.helper.copyWith(color: helperColor),
-      ),
-      trailing: Icon(Icons.chevron_right_rounded, color: helperColor),
+    return InkWell(
       onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: primaryColor, size: 22),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyLarge.copyWith(color: textColor),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTypography.helper.copyWith(color: helperColor),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Icon(Icons.chevron_right_rounded, color: helperColor, size: 24),
+          ],
+        ),
+      ),
     );
   }
 
@@ -607,22 +690,43 @@ class _SettingsPageState extends State<SettingsPage>
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
 
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: primaryColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: primaryColor, size: 22),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
       ),
-      title: Text(
-        title,
-        style: AppTypography.bodyLarge.copyWith(color: textColor),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: AppTypography.helper.copyWith(color: helperColor),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: primaryColor, size: 22),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTypography.bodyLarge.copyWith(color: textColor),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: AppTypography.helper.copyWith(color: helperColor),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -738,7 +842,7 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-  void _showTextSizePicker(BuildContext context, bool isDark) {
+  void _showTextSizePicker(BuildContext outerContext, bool isDark) {
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
     final textColor = isDark
         ? AppColors.textPrimaryDark
@@ -746,73 +850,140 @@ class _SettingsPageState extends State<SettingsPage>
     final primaryColor = isDark
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
-    final sizes = ['Normal', 'Grande', 'Muy grande'];
+    final helperColor = isDark
+        ? AppColors.textHelperDark
+        : AppColors.textHelper;
+
+    final currentTextSize = LetMeKnowApp.of(outerContext).textSize;
 
     showModalBottomSheet(
-      context: context,
+      context: outerContext,
       backgroundColor: bgColor,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.dividerDark : AppColors.divider,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Tamaño de texto',
-                  style: AppTypography.titleMedium.copyWith(color: textColor),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                ...sizes.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final size = entry.value;
-                  final isSelected = index == _textSizeIndex;
-                  final fontSize = 16.0 + (index * 2);
-
-                  return ListTile(
-                    leading: Icon(
-                      isSelected
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                      color: isSelected
-                          ? primaryColor
-                          : (isDark
-                                ? AppColors.textHelperDark
-                                : AppColors.textHelper),
-                    ),
-                    title: Text(
-                      size,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: fontSize,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.55,
+            minChildSize: 0.4,
+            maxChildSize: 0.85,
+            expand: false,
+            builder: (context, scrollController) {
+              return Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.dividerDark : AppColors.divider,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _textSizeIndex = index);
-                      Navigator.pop(context);
-                      _showSavedFeedback(context);
-                    },
-                  );
-                }),
-                const SizedBox(height: AppSpacing.md),
-              ],
-            ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Tamaño de texto',
+                      style: AppTypography.titleMedium.copyWith(color: textColor),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'El cambio se aplica a toda la app',
+                      style: AppTypography.helper.copyWith(color: helperColor),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: TextSizeOption.values.length,
+                        itemBuilder: (context, index) {
+                          final option = TextSizeOption.values[index];
+                          final isSelected = option == currentTextSize;
+                          const baseFontSize = 16.0;
+                          final previewFontSize = baseFontSize * option.scaleFactor;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? primaryColor.withValues(alpha: 0.1)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                              border: Border.all(
+                                color: isSelected
+                                    ? primaryColor
+                                    : helperColor.withValues(alpha: 0.3),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: InkWell(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                LetMeKnowApp.of(outerContext).setTextSize(option);
+                                Navigator.pop(context);
+                                _showSavedFeedback(outerContext);
+                              },
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.sm,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isSelected
+                                          ? Icons.check_circle_rounded
+                                          : Icons.circle_outlined,
+                                      color: isSelected ? primaryColor : helperColor,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            option.label,
+                                            style: TextStyle(
+                                              color: textColor,
+                                              fontSize: previewFontSize,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Texto de ejemplo',
+                                            style: TextStyle(
+                                              color: helperColor,
+                                              fontSize: previewFontSize * 0.85,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         );
       },
