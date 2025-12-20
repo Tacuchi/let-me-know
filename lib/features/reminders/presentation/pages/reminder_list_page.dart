@@ -409,91 +409,202 @@ class _ReminderListPageState extends State<ReminderListPage>
     );
   }
 
-  void _showSearchSheet(BuildContext context, bool isDark) {
-    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
-    final textColor = isDark
-        ? AppColors.textPrimaryDark
-        : AppColors.textPrimary;
-    final hintColor = isDark ? AppColors.textHelperDark : AppColors.textHelper;
+  void _showSearchSheet(BuildContext outerContext, bool isDark) {
+    final cubit = outerContext.read<ReminderListCubit>();
 
     showModalBottomSheet(
-      context: context,
+      context: outerContext,
       isScrollControlled: true,
-      backgroundColor: bgColor,
+      backgroundColor: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
+        return BlocProvider.value(
+          value: cubit,
+          child: _SearchSheetContent(isDark: isDark),
+        );
+      },
+    ).whenComplete(() {
+      cubit.clearSearch();
+    });
+  }
+}
+
+class _SearchSheetContent extends StatefulWidget {
+  final bool isDark;
+
+  const _SearchSheetContent({required this.isDark});
+
+  @override
+  State<_SearchSheetContent> createState() => _SearchSheetContentState();
+}
+
+class _SearchSheetContentState extends State<_SearchSheetContent> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final hintColor = isDark ? AppColors.textHelperDark : AppColors.textHelper;
+    final secondaryColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (context, scrollController) {
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.dividerDark : AppColors.divider,
-                      borderRadius: BorderRadius.circular(2),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.dividerDark : AppColors.divider,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar recordatorio...',
-                      hintStyle: TextStyle(color: hintColor),
-                      prefixIcon: Icon(Icons.search_rounded, color: hintColor),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusFull,
+                    const SizedBox(height: AppSpacing.lg),
+                    TextField(
+                      controller: _controller,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Buscar recordatorio...',
+                        hintStyle: TextStyle(color: hintColor),
+                        prefixIcon: Icon(Icons.search_rounded, color: hintColor),
+                        suffixIcon: _controller.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.clear_rounded, color: hintColor),
+                                onPressed: () {
+                                  _controller.clear();
+                                  context.read<ReminderListCubit>().clearSearch();
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.radiusFull),
+                          borderSide: BorderSide.none,
                         ),
-                        borderSide: BorderSide.none,
+                        filled: true,
+                        fillColor:
+                            isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary,
                       ),
-                      filled: true,
-                      fillColor: isDark
-                          ? AppColors.bgTertiaryDark
-                          : AppColors.bgTertiary,
+                      style: TextStyle(color: textColor),
+                      onChanged: (value) {
+                        context.read<ReminderListCubit>().search(value);
+                        setState(() {});
+                      },
                     ),
-                    style: TextStyle(color: textColor),
-                    onChanged: (value) {
-                      // TODO: Implementar búsqueda
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  // Búsquedas recientes
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Búsquedas recientes',
-                      style: AppTypography.label.copyWith(
-                        color: isDark
-                            ? AppColors.textSecondaryDark
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    children: ['pastillas', 'doctor', 'compras'].map((term) {
-                      return ActionChip(
-                        label: Text(term),
-                        onPressed: () {
-                          // TODO: Buscar término
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
+                  ],
+                ),
               ),
-            ),
+              Expanded(
+                child: BlocBuilder<ReminderListCubit, ReminderListState>(
+                  builder: (context, state) {
+                    if (state is! ReminderListLoaded) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!state.isSearching) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Escribe para buscar',
+                              style: AppTypography.label.copyWith(
+                                color: secondaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Icon(
+                              Icons.search_rounded,
+                              size: 64,
+                              color: hintColor.withValues(alpha: 0.5),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final results = state.searchResults ?? [];
+
+                    if (results.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 48,
+                              color: hintColor,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Sin resultados para "${state.searchQuery}"',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: secondaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg),
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final reminder = results[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: ReminderCard(
+                            reminder: reminder,
+                            showProgress: false,
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                            onComplete: () {
+                              HapticFeedback.mediumImpact();
+                              context
+                                  .read<ReminderListCubit>()
+                                  .markAsCompleted(reminder.id);
+                            },
+                            onDelete: () {
+                              HapticFeedback.mediumImpact();
+                              context.read<ReminderListCubit>().delete(reminder.id);
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         );
       },

@@ -1,14 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rxdart/rxdart.dart';
 
+import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_status.dart';
 import '../../domain/repositories/reminder_repository.dart';
 import 'reminder_summary_state.dart';
 
-/// Cubit para métricas de la pantalla de inicio ("Resumen de hoy").
-///
-/// Observa recordatorios de hoy y calcula contadores.
 class ReminderSummaryCubit extends Cubit<ReminderSummaryState> {
   final ReminderRepository _repository;
 
@@ -22,15 +21,20 @@ class ReminderSummaryCubit extends Cubit<ReminderSummaryState> {
 
     emit(const ReminderSummaryLoading());
 
-    _sub = _repository.watchForToday().listen(
-      (items) {
-        final pending = items
+    _sub = CombineLatestStream.combine2<List<Reminder>, List<Reminder>,
+        ({List<Reminder> today, List<Reminder> upcoming})>(
+      _repository.watchForToday(),
+      _repository.watchUpcoming(limit: 5),
+      (today, upcoming) => (today: today, upcoming: upcoming),
+    ).listen(
+      (data) {
+        final pending = data.today
             .where((r) => r.status == ReminderStatus.pending)
             .length;
-        final overdue = items
+        final overdue = data.today
             .where((r) => r.status == ReminderStatus.overdue || r.isOverdue)
             .length;
-        final completed = items
+        final completed = data.today
             .where((r) => r.status == ReminderStatus.completed)
             .length;
 
@@ -39,6 +43,7 @@ class ReminderSummaryCubit extends Cubit<ReminderSummaryState> {
             pending: pending,
             overdue: overdue,
             completed: completed,
+            upcoming: data.upcoming,
           ),
         );
       },

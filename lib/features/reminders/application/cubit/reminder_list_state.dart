@@ -30,10 +30,21 @@ final class ReminderListLoading extends ReminderListState {
 final class ReminderListLoaded extends ReminderListState {
   final List<Reminder> all;
   final ReminderListFilter filter;
+  final String? searchQuery;
+  final List<Reminder>? searchResults;
 
-  const ReminderListLoaded({required this.all, required this.filter});
+  const ReminderListLoaded({
+    required this.all,
+    required this.filter,
+    this.searchQuery,
+    this.searchResults,
+  });
+
+  bool get isSearching => searchQuery != null && searchQuery!.isNotEmpty;
 
   List<Reminder> get filtered {
+    if (isSearching) return searchResults ?? [];
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
@@ -74,8 +85,23 @@ final class ReminderListLoaded extends ReminderListState {
   int get completedCount =>
       all.where((r) => r.status == ReminderStatus.completed).length;
 
+  ReminderListLoaded copyWith({
+    List<Reminder>? all,
+    ReminderListFilter? filter,
+    String? searchQuery,
+    List<Reminder>? searchResults,
+    bool clearSearch = false,
+  }) {
+    return ReminderListLoaded(
+      all: all ?? this.all,
+      filter: filter ?? this.filter,
+      searchQuery: clearSearch ? null : (searchQuery ?? this.searchQuery),
+      searchResults: clearSearch ? null : (searchResults ?? this.searchResults),
+    );
+  }
+
   @override
-  List<Object?> get props => [all, filter];
+  List<Object?> get props => [all, filter, searchQuery, searchResults];
 }
 
 final class ReminderListError extends ReminderListState {

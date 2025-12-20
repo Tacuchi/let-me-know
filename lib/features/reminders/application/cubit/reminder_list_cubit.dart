@@ -10,6 +10,7 @@ class ReminderListCubit extends Cubit<ReminderListState> {
 
   StreamSubscription? _sub;
   ReminderListFilter _filter = ReminderListFilter.all;
+  String? _searchQuery;
 
   ReminderListCubit(this._repository) : super(const ReminderListLoading());
 
@@ -21,7 +22,12 @@ class ReminderListCubit extends Cubit<ReminderListState> {
 
     _sub = _repository.watchAll().listen(
       (items) {
-        emit(ReminderListLoaded(all: items, filter: _filter));
+        final current = state;
+        if (current is ReminderListLoaded && current.isSearching) {
+          emit(current.copyWith(all: items));
+        } else {
+          emit(ReminderListLoaded(all: items, filter: _filter));
+        }
       },
       onError: (_) {
         emit(
@@ -33,10 +39,40 @@ class ReminderListCubit extends Cubit<ReminderListState> {
 
   void setFilter(ReminderListFilter filter) {
     _filter = filter;
+    _searchQuery = null;
 
     final current = state;
     if (current is ReminderListLoaded) {
-      emit(ReminderListLoaded(all: current.all, filter: _filter));
+      emit(current.copyWith(filter: _filter, clearSearch: true));
+    }
+  }
+
+  Future<void> search(String query) async {
+    _searchQuery = query;
+    final current = state;
+
+    if (current is! ReminderListLoaded) return;
+
+    if (query.trim().isEmpty) {
+      emit(current.copyWith(clearSearch: true));
+      return;
+    }
+
+    try {
+      final results = await _repository.search(query);
+      if (_searchQuery == query) {
+        emit(current.copyWith(searchQuery: query, searchResults: results));
+      }
+    } catch (_) {
+      // Ignorar errores de búsqueda, mantener estado actual
+    }
+  }
+
+  void clearSearch() {
+    _searchQuery = null;
+    final current = state;
+    if (current is ReminderListLoaded) {
+      emit(current.copyWith(clearSearch: true));
     }
   }
 

@@ -171,4 +171,55 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
         .watch()
         .map((rows) => rows.map(_toEntity).toList(growable: false));
   }
+
+  @override
+  Future<List<Reminder>> getUpcoming({int limit = 5}) async {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    final rows = await (_db.select(_db.reminders)
+          ..where(
+            (t) =>
+                t.status.equals(ReminderStatus.pending.name) &
+                t.scheduledAtMs.isBiggerOrEqualValue(nowMs),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)])
+          ..limit(limit))
+        .get();
+
+    return rows.map(_toEntity).toList(growable: false);
+  }
+
+  @override
+  Stream<List<Reminder>> watchUpcoming({int limit = 5}) {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    return (_db.select(_db.reminders)
+          ..where(
+            (t) =>
+                t.status.equals(ReminderStatus.pending.name) &
+                t.scheduledAtMs.isBiggerOrEqualValue(nowMs),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)])
+          ..limit(limit))
+        .watch()
+        .map((rows) => rows.map(_toEntity).toList(growable: false));
+  }
+
+  @override
+  Future<List<Reminder>> search(String query) async {
+    if (query.trim().isEmpty) return [];
+
+    final pattern = '%${query.toLowerCase()}%';
+
+    final rows = await (_db.select(_db.reminders)
+          ..where(
+            (t) =>
+                t.title.lower().like(pattern) |
+                t.description.lower().like(pattern),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)]))
+        .get();
+
+    return rows.map(_toEntity).toList(growable: false);
+  }
 }
