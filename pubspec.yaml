@@ -42,8 +42,10 @@ dependencies:
   # record: ^5.1.2              # Grabación de audio
   speech_to_text: ^7.0.0        # Transcripción
 
-  # Notificaciones (para futuras features)
-  # flutter_local_notifications: ^18.0.1
+  # Notificaciones
+  flutter_local_notifications: ^18.0.1
+  flutter_timezone: ^3.0.0          # Detección de zona horaria del dispositivo
+  timezone: ^0.9.4                  # Manejo de zonas horarias para notificaciones
 
 dev_dependencies:
   flutter_test:

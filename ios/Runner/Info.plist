@@ -49,5 +49,10 @@
 	<string>Esta app usa reconocimiento de voz para crear recordatorios</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Esta app necesita acceso al micrófono para grabar tu voz</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
