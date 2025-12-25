@@ -279,18 +279,23 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
   Widget _buildTypeIcon(Reminder reminder, bool isDark) {
     final typeColor = reminder.type.color;
 
-    return Container(
-      width: 100,
-      height: 100,
-      margin: const EdgeInsets.symmetric(horizontal: 100),
-      decoration: BoxDecoration(
-        color: typeColor.withValues(alpha: 0.15),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          reminder.type.emoji,
-          style: const TextStyle(fontSize: 48),
+    return Center(
+      child: Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          color: typeColor.withValues(alpha: isDark ? 0.2 : 0.15),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: typeColor.withValues(alpha: 0.3),
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            reminder.type.emoji,
+            style: const TextStyle(fontSize: 48),
+          ),
         ),
       ),
     );
@@ -329,13 +334,10 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
       decoration: BoxDecoration(
         color: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.dividerDark : AppColors.divider,
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
@@ -484,13 +486,10 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
       decoration: BoxDecoration(
         color: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.dividerDark : AppColors.divider,
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
@@ -618,7 +617,7 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Botón principal: Completar (para recordatorios) o Eliminar (para notas)
+        // Botón principal: Completar (para recordatorios)
         if (!isNote)
           SizedBox(
             height: 56,
@@ -629,11 +628,11 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
               },
               icon: const Icon(Icons.check_rounded, size: 24),
               label: const Text(
-                '✓ Marcar como completado',
+                'Marcar como completado',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.success,
+                backgroundColor: AppColors.accentPrimary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -651,12 +650,15 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
               onPressed: () => _showSnoozeOptions(context),
               icon: const Icon(Icons.snooze_rounded, size: 24),
               label: const Text(
-                '⏰ Posponer',
+                'Posponer',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.warning,
-                side: BorderSide(color: AppColors.warning, width: 2),
+                foregroundColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                side: BorderSide(
+                  color: isDark ? AppColors.dividerDark : AppColors.divider,
+                  width: 1.5,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -673,12 +675,12 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
             onPressed: () => _showDeleteConfirmation(context),
             icon: const Icon(Icons.delete_outline_rounded, size: 24),
             label: const Text(
-              '🗑️ Eliminar',
+              'Eliminar',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.error,
-              side: BorderSide(color: AppColors.error, width: 2),
+              side: BorderSide(color: AppColors.error.withValues(alpha: 0.5), width: 1.5),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
