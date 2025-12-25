@@ -8,6 +8,10 @@ abstract class ReminderRepository {
 
   Future<List<Reminder>> getForToday();
 
+  Future<List<Reminder>> getForTomorrow();
+
+  Future<List<Reminder>> getForWeek();
+
   Future<List<Reminder>> getByStatus(ReminderStatus status);
 
   /// Obtiene los próximos recordatorios pendientes (para HomePage)
@@ -15,6 +19,12 @@ abstract class ReminderRepository {
 
   /// Busca recordatorios por texto en título o descripción
   Future<List<Reminder>> search(String query);
+
+  /// Busca notas de ubicación por objeto (ej: "llaves", "control")
+  Future<List<Reminder>> searchNotes(String objectQuery);
+
+  /// Obtiene recordatorios que se activarán pronto
+  Future<List<Reminder>> getUpcomingAlerts({Duration within = const Duration(hours: 2)});
 
   Future<void> save(Reminder reminder);
 

@@ -6,6 +6,8 @@ import 'package:let_me_know/features/reminders/domain/entities/reminder_source.d
 import 'package:let_me_know/features/reminders/domain/entities/reminder_status.dart';
 import 'package:let_me_know/features/reminders/domain/entities/reminder_type.dart';
 import 'package:let_me_know/features/reminders/domain/repositories/reminder_repository.dart';
+import 'package:let_me_know/di/injection_container.dart';
+import 'package:let_me_know/services/notifications/notification_service.dart';
 
 class ReminderRepositoryDriftImpl implements ReminderRepository {
   final AppDatabase _db;
@@ -111,6 +113,50 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
   }
 
   @override
+  Future<List<Reminder>> getForTomorrow() async {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+    final endExclusive = start.add(const Duration(days: 1));
+
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = endExclusive.millisecondsSinceEpoch;
+
+    final rows =
+        await (_db.select(_db.reminders)
+              ..where(
+                (t) =>
+                    t.scheduledAtMs.isBiggerOrEqualValue(startMs) &
+                    t.scheduledAtMs.isSmallerThanValue(endMs),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)]))
+            .get();
+
+    return rows.map(_toEntity).toList(growable: false);
+  }
+
+  @override
+  Future<List<Reminder>> getForWeek() async {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final endExclusive = start.add(const Duration(days: 7));
+
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = endExclusive.millisecondsSinceEpoch;
+
+    final rows =
+        await (_db.select(_db.reminders)
+              ..where(
+                (t) =>
+                    t.scheduledAtMs.isBiggerOrEqualValue(startMs) &
+                    t.scheduledAtMs.isSmallerThanValue(endMs),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)]))
+            .get();
+
+    return rows.map(_toEntity).toList(growable: false);
+  }
+
+  @override
   Future<List<Reminder>> getByStatus(ReminderStatus status) async {
     final rows =
         await (_db.select(_db.reminders)
@@ -126,15 +172,32 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
     await _db
         .into(_db.reminders)
         .insertOnConflictUpdate(_toCompanion(reminder));
+
+    if (reminder.scheduledAt != null && reminder.hasNotification) {
+      final notificationService = getIt<NotificationService>();
+      await notificationService.scheduleNotification(reminder);
+    }
   }
 
   @override
   Future<void> delete(String id) async {
+    final reminder = await getById(id);
+    if (reminder?.notificationId != null) {
+      final notificationService = getIt<NotificationService>();
+      await notificationService.cancelNotification(reminder!.notificationId!);
+    }
+
     await (_db.delete(_db.reminders)..where((t) => t.id.equals(id))).go();
   }
 
   @override
   Future<void> markAsCompleted(String id) async {
+    final reminder = await getById(id);
+    if (reminder?.notificationId != null) {
+      final notificationService = getIt<NotificationService>();
+      await notificationService.cancelNotification(reminder!.notificationId!);
+    }
+
     await (_db.update(_db.reminders)..where((t) => t.id.equals(id))).write(
       RemindersCompanion(
         status: const Value('completed'),
@@ -216,6 +279,53 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
             (t) =>
                 t.title.lower().like(pattern) |
                 t.description.lower().like(pattern),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)]))
+        .get();
+
+    return rows.map(_toEntity).toList(growable: false);
+  }
+
+  @override
+  Future<List<Reminder>> searchNotes(String objectQuery) async {
+    if (objectQuery.trim().isEmpty) return [];
+
+    final pattern = '%${objectQuery.toLowerCase()}%';
+
+    // Buscar en notas de ubicación (type = location)
+    // Busca en: object, location, title, description
+    final rows = await (_db.select(_db.reminders)
+          ..where(
+            (t) =>
+                t.type.equals(ReminderType.location.name) &
+                (t.object.lower().like(pattern) |
+                    t.location.lower().like(pattern) |
+                    t.title.lower().like(pattern) |
+                    t.description.lower().like(pattern)),
+          )
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAtMs)]))
+        .get();
+
+    return rows.map(_toEntity).toList(growable: false);
+  }
+
+  @override
+  Future<List<Reminder>> getUpcomingAlerts({
+    Duration within = const Duration(hours: 2),
+  }) async {
+    final now = DateTime.now();
+    final nowMs = now.millisecondsSinceEpoch;
+    final endMs = now.add(within).millisecondsSinceEpoch;
+
+    // Recordatorios pendientes que se activarán dentro del rango
+    // Excluir notas (type != location)
+    final rows = await (_db.select(_db.reminders)
+          ..where(
+            (t) =>
+                t.type.isNotValue(ReminderType.location.name) &
+                t.status.equals(ReminderStatus.pending.name) &
+                t.scheduledAtMs.isBiggerOrEqualValue(nowMs) &
+                t.scheduledAtMs.isSmallerOrEqualValue(endMs),
           )
           ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)]))
         .get();
