@@ -109,15 +109,17 @@ class _ReminderCardState extends State<ReminderCard>
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
+            decoration: BoxDecoration(
             color: _getBackgroundColor(isDark, isCompleted, isOverdue),
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            border: Border(left: BorderSide(color: _borderColor, width: 4)),
+            border: isOverdue 
+              ? Border.all(color: AppColors.overdue, width: 2) // Borde rojo fuerte para vencidos
+              : Border(left: BorderSide(color: _borderColor, width: 6)), // Borde izquierdo más grueso
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08), // Sombra más marcada
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -259,12 +261,9 @@ class _ReminderCardState extends State<ReminderCard>
                     !_isNote && // No mostrar progreso para notas
                     widget.reminder.scheduledAt != null &&
                     !isCompleted &&
+                    !isOverdue) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _buildProgressIndicator(isDark),
-                ],
-                if (widget.onComplete != null || widget.onDelete != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _buildActionButtons(isDark),
                 ],
               ],
             ),
@@ -353,12 +352,13 @@ class _ReminderCardState extends State<ReminderCard>
   Color _getBackgroundColor(bool isDark, bool isCompleted, bool isOverdue) {
     if (isCompleted) {
       return (isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary)
-          .withValues(alpha: 0.7);
+          .withValues(alpha: 0.5); // Más transparente para completados
     }
     if (isOverdue) {
-      return AppColors.overdue.withValues(alpha: isDark ? 0.2 : 0.3);
+      return AppColors.overdue.withValues(alpha: isDark ? 0.15 : 0.1); // Menos intenso pero claro
     }
-    return isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    // Aumentar contraste en fondo general
+    return isDark ? const Color(0xFF2A2A3D) : Colors.white; 
   }
 
   Widget _buildSwipeBackground(
@@ -456,49 +456,6 @@ class _ReminderCardState extends State<ReminderCard>
             color: _borderColor,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons(bool isDark) {
-    final hasComplete = widget.onComplete != null && !_isNote;
-    final hasDelete = widget.onDelete != null;
-
-    return Row(
-      children: [
-        if (hasDelete)
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                widget.onDelete?.call();
-              },
-              icon: const Icon(Icons.delete_outline_rounded, size: 20),
-              label: const Text('Eliminar'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
-                padding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-            ),
-          ),
-        if (hasDelete && hasComplete) const SizedBox(width: AppSpacing.md),
-        if (hasComplete)
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                widget.onComplete?.call();
-              },
-              icon: const Icon(Icons.check_rounded, size: 20),
-              label: const Text('Completar'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accentSecondary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-            ),
-          ),
       ],
     );
   }
