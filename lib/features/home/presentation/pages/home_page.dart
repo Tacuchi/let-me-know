@@ -436,6 +436,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               }
 
+              return BlocBuilder<ReminderSummaryCubit, ReminderSummaryState>(
+                builder: (context, state) {
+                  final pending = state is ReminderSummaryLoaded ? state.pending : 0;
+                  final overdue = state is ReminderSummaryLoaded ? state.overdue : 0;
+                  final completed = state is ReminderSummaryLoaded ? state.completed : 0;
+
                   return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -529,17 +535,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         const SizedBox(height: AppSpacing.xs),
         Text(
           'No tienes recordatorios pendientes',
-          style: AppTypography.bodyRegular.copyWith(
+          style: AppTypography.bodyMedium.copyWith(
             color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
           ),
           textAlign: TextAlign.center,
         ),
       ],
-    );
-            },
-          ),
-        ],
-      ),
     );
   }
 
