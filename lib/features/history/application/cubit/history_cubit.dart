@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../reminders/domain/entities/reminder_status.dart';
-import '../../../reminders/domain/entities/reminder_type.dart';
 import '../../../reminders/domain/repositories/reminder_repository.dart';
 import 'history_state.dart';
 
@@ -11,8 +10,7 @@ class HistoryCubit extends Cubit<HistoryState> {
   final ReminderRepository _repository;
 
   StreamSubscription? _sub;
-  HistoryPeriodFilter _periodFilter = HistoryPeriodFilter.all;
-  ReminderType? _typeFilter;
+  String _searchQuery = '';
 
   HistoryCubit(this._repository) : super(const HistoryLoading());
 
@@ -29,34 +27,22 @@ class HistoryCubit extends Cubit<HistoryState> {
     );
   }
 
-  void setPeriodFilter(HistoryPeriodFilter filter) {
-    _periodFilter = filter;
-    final current = state;
-    if (current is HistoryLoaded) {
-      emit(current.copyWith(periodFilter: filter));
-    }
-  }
 
-  void setTypeFilter(ReminderType? type) {
-    _typeFilter = type;
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
     final current = state;
     if (current is HistoryLoaded) {
-      if (type == null) {
-        emit(current.copyWith(clearTypeFilter: true));
-      } else {
-        emit(current.copyWith(typeFilter: type));
-      }
+      emit(current.copyWith(searchQuery: query));
     }
   }
 
   void clearFilters() {
-    _periodFilter = HistoryPeriodFilter.all;
-    _typeFilter = null;
+    _searchQuery = '';
     final current = state;
     if (current is HistoryLoaded) {
       emit(current.copyWith(
-        periodFilter: HistoryPeriodFilter.all,
-        clearTypeFilter: true,
+        searchQuery: '',
       ));
     }
   }
@@ -91,8 +77,7 @@ class HistoryCubit extends Cubit<HistoryState> {
           all: completed,
           completedThisMonth: completedThisMonth,
           completedTotal: completed.length,
-          periodFilter: _periodFilter,
-          typeFilter: _typeFilter,
+          searchQuery: _searchQuery,
         ),
       );
     } catch (_) {
