@@ -599,10 +599,22 @@ class _SettingsPageState extends State<SettingsPage>
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: primaryColor,
+          Column(
+            children: [
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                activeTrackColor: primaryColor,
+              ),
+              Text(
+                value ? 'Activado' : 'Desactivado',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: value ? primaryColor : helperColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ],
       ),
