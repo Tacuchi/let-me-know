@@ -5,13 +5,13 @@ import '../constants/constants.dart';
 
 class AnimatedMicButton extends StatefulWidget {
   final bool isRecording;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final double size;
 
   const AnimatedMicButton({
     super.key,
     required this.isRecording,
-    required this.onTap,
+    this.onTap,
     this.size = 88,
   });
 
@@ -101,8 +101,9 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton>
   }
 
   void _handleTap() {
+    if (widget.onTap == null) return;
     HapticFeedback.mediumImpact();
-    widget.onTap();
+    widget.onTap!();
   }
 
   @override
