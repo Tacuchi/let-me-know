@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -30,6 +32,7 @@ class _ReminderCardState extends State<ReminderCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+  Timer? _progressTimer;
 
   @override
   void initState() {
@@ -42,53 +45,47 @@ class _ReminderCardState extends State<ReminderCard>
       begin: 1.0,
       end: 0.98,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    
+    // Iniciar timer si tiene fecha programada y muestra progreso
+    _startProgressTimer();
+  }
+
+  @override
+  void didUpdateWidget(ReminderCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reminder.scheduledAt != widget.reminder.scheduledAt) {
+      _startProgressTimer();
+    }
+  }
+
+  void _startProgressTimer() {
+    _progressTimer?.cancel();
+    
+    final shouldShowProgress = widget.showProgress &&
+        !_isNote &&
+        widget.reminder.scheduledAt != null &&
+        widget.reminder.status != ReminderStatus.completed &&
+        widget.reminder.status != ReminderStatus.overdue;
+    
+    if (shouldShowProgress) {
+      // Actualizar cada 10 segundos para mostrar progreso más fluido
+      _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _progressTimer?.cancel();
     super.dispose();
   }
 
-  Color get _borderColor {
-    switch (widget.reminder.type) {
-      case ReminderType.medication:
-        return AppColors.reminderMedication;
-      case ReminderType.appointment:
-        return AppColors.reminderAppointment;
-      case ReminderType.call:
-        return AppColors.reminderCall;
-      case ReminderType.shopping:
-        return AppColors.reminderShopping;
-      case ReminderType.task:
-        return AppColors.reminderTask;
-      case ReminderType.event:
-        return AppColors.reminderEvent;
-      case ReminderType.location:
-        return AppColors.reminderLocation;
-    }
-  }
-
-  bool get _isNote => widget.reminder.type == ReminderType.location;
-
-  IconData get _typeIcon {
-    switch (widget.reminder.type) {
-      case ReminderType.medication:
-        return Icons.medication_rounded;
-      case ReminderType.appointment:
-        return Icons.local_hospital_rounded;
-      case ReminderType.call:
-        return Icons.phone_rounded;
-      case ReminderType.shopping:
-        return Icons.shopping_cart_rounded;
-      case ReminderType.task:
-        return Icons.task_alt_rounded;
-      case ReminderType.event:
-        return Icons.event_rounded;
-      case ReminderType.location:
-        return Icons.place_rounded;
-    }
-  }
+  // Usar propiedades centralizadas de ReminderType
+  Color get _typeColor => widget.reminder.type.color;
+  IconData get _typeIcon => widget.reminder.type.icon;
+  bool get _isNote => widget.reminder.type.isNote;
 
   @override
   Widget build(BuildContext context) {
@@ -113,8 +110,8 @@ class _ReminderCardState extends State<ReminderCard>
             color: _getBackgroundColor(isDark, isCompleted, isOverdue),
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             border: isOverdue 
-              ? Border.all(color: AppColors.overdue, width: 2) // Borde rojo fuerte para vencidos
-              : Border(left: BorderSide(color: _borderColor, width: 6)), // Borde izquierdo más grueso
+              ? Border.all(color: AppColors.overdue, width: 2)
+              : Border(left: BorderSide(color: _typeColor, width: 6)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08), // Sombra más marcada
@@ -133,12 +130,12 @@ class _ReminderCardState extends State<ReminderCard>
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.sm),
                       decoration: BoxDecoration(
-                        color: _borderColor.withValues(alpha: 0.15),
+                        color: _typeColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(
                           AppSpacing.radiusSm,
                         ),
                       ),
-                      child: Icon(_typeIcon, size: 22, color: _borderColor),
+                      child: Icon(_typeIcon, size: 22, color: _typeColor),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
@@ -153,7 +150,9 @@ class _ReminderCardState extends State<ReminderCard>
                               ? (isDark
                                     ? AppColors.textHelperDark
                                     : AppColors.textHelper)
-                              : null,
+                              : (isDark
+                                    ? AppColors.textPrimaryDark
+                                    : AppColors.textPrimary),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -193,17 +192,17 @@ class _ReminderCardState extends State<ReminderCard>
                           vertical: AppSpacing.xs,
                         ),
                         decoration: BoxDecoration(
-                          color: _borderColor.withValues(alpha: 0.15),
+                          color: _typeColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(
                             AppSpacing.radiusSm,
                           ),
                         ),
                         child: Text(
-                          'Nota',
+                          widget.reminder.type.displayName,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: _borderColor,
+                            color: _typeColor,
                           ),
                         ),
                       ),
@@ -217,7 +216,7 @@ class _ReminderCardState extends State<ReminderCard>
                       Icon(
                         Icons.place_rounded,
                         size: 16,
-                        color: _borderColor,
+                        color: _typeColor,
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Expanded(
@@ -352,13 +351,13 @@ class _ReminderCardState extends State<ReminderCard>
   Color _getBackgroundColor(bool isDark, bool isCompleted, bool isOverdue) {
     if (isCompleted) {
       return (isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary)
-          .withValues(alpha: 0.5); // Más transparente para completados
+          .withValues(alpha: 0.5);
     }
     if (isOverdue) {
-      return AppColors.overdue.withValues(alpha: isDark ? 0.15 : 0.1); // Menos intenso pero claro
+      return AppColors.overdue.withValues(alpha: isDark ? 0.15 : 0.1);
     }
-    // Aumentar contraste en fondo general
-    return isDark ? const Color(0xFF2A2A3D) : Colors.white; 
+    // Fondo de tarjeta con buen contraste
+    return isDark ? AppColors.bgSecondaryDark : Colors.white; 
   }
 
   Widget _buildSwipeBackground(
@@ -442,7 +441,7 @@ class _ReminderCardState extends State<ReminderCard>
                 backgroundColor: isDark
                     ? AppColors.dividerDark
                     : AppColors.divider,
-                valueColor: AlwaysStoppedAnimation(_borderColor),
+                valueColor: AlwaysStoppedAnimation(_typeColor),
                 borderRadius: BorderRadius.circular(2),
               );
             },
@@ -453,7 +452,7 @@ class _ReminderCardState extends State<ReminderCard>
           timeText,
           style: AppTypography.helper.copyWith(
             fontWeight: FontWeight.w500,
-            color: _borderColor,
+            color: _typeColor,
           ),
         ),
       ],

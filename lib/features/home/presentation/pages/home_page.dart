@@ -601,6 +601,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 showProgress: false,
                 onTap: () {
                   HapticFeedback.lightImpact();
+                  context.push('/reminders/${reminder.id}');
                 },
               ),
             );

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/core.dart';
@@ -248,7 +249,8 @@ class _ReminderListPageState extends State<ReminderListPage>
           child: ReminderCard(
             reminder: reminder,
             onTap: () {
-              // TODO: Mostrar detalle
+              HapticFeedback.lightImpact();
+              context.push('/reminders/${reminder.id}');
             },
             onComplete: () {
               HapticFeedback.mediumImpact();
@@ -512,6 +514,7 @@ class _SearchSheetContentState extends State<_SearchSheetContent> {
                             showProgress: false,
                             onTap: () {
                               Navigator.pop(context);
+                              context.push('/reminders/${reminder.id}');
                             },
                             onComplete: () {
                               HapticFeedback.mediumImpact();
