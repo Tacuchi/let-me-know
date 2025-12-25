@@ -15,6 +15,7 @@ class VoiceRecordingPage extends StatefulWidget {
 
 class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     with TickerProviderStateMixin {
+  late final PageController _pageController;
   int _currentPage = 0;
 
   late AnimationController _fadeController;
@@ -25,8 +26,10 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
   static const _queryBg = Color(0xFFF3E5F5);
   static const _queryBgDark = Color(0xFF1A1A2E);
 
+  @override
+  void initState() {
     super.initState();
-
+    _pageController = PageController();
 
     _fadeController = AnimationController(
       vsync: this,
@@ -41,8 +44,8 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
   }
 
   @override
-  @override
   void dispose() {
+    _pageController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -77,9 +80,13 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
             context.pop();
           },
         ),
-        title: Text(
-          'Asistente de Voz',
-          style: AppTypography.titleMedium.copyWith(color: textColor),
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Text(
+            key: ValueKey(isQueryMode),
+            isQueryMode ? 'Consultar' : 'Crear',
+            style: AppTypography.titleMedium.copyWith(color: textColor),
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -96,16 +103,27 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Column(
+          child: Stack(
             children: [
-              const SizedBox(height: AppSpacing.md),
-              _buildModeToggle(isDark, isQueryMode, accentColor, textColor),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: isQueryMode
-                      ? VoiceQueryMode(key: const ValueKey('query'), isActive: true)
-                      : VoiceCommandMode(key: const ValueKey('command'), isActive: true),
+              PageView(
+                controller: _pageController,
+                scrollDirection: Axis.vertical,
+                onPageChanged: (page) {
+                  HapticFeedback.selectionClick();
+                  setState(() => _currentPage = page);
+                },
+                children: [
+                  VoiceCommandMode(isActive: _currentPage == 0),
+                  VoiceQueryMode(isActive: _currentPage == 1),
+                ],
+              ),
+              // Indicador de página
+              Positioned(
+                right: AppSpacing.md,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _buildPageIndicator(isDark, accentColor),
                 ),
               ),
             ],
@@ -115,103 +133,45 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     );
   }
 
-  Widget _buildModeToggle(
-    bool isDark,
-    bool isQueryMode,
-    Color accentColor,
-    Color textColor,
-  ) {
-    final unselectedColor =
-        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-        border: Border.all(
-          color: isDark ? AppColors.dividerDark : AppColors.divider,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildToggleButton(
-              label: 'Crear',
-              icon: Icons.mic_rounded,
-              isActive: !isQueryMode,
-              activeColor: AppColors.accentPrimary,
-              inactiveColor: unselectedColor,
-              onTap: () => setState(() => _currentPage = 0),
-            ),
-          ),
-          Expanded(
-            child: _buildToggleButton(
-              label: 'Consultar',
-              icon: Icons.search_rounded,
-              isActive: isQueryMode,
-              activeColor: const Color(0xFF7C4DFF),
-              inactiveColor: unselectedColor,
-              onTap: () => setState(() => _currentPage = 1),
-            ),
-          ),
-        ],
-      ),
+  Widget _buildPageIndicator(bool isDark, Color accentColor) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildIndicatorDot(0, isDark, accentColor),
+        const SizedBox(height: AppSpacing.sm),
+        _buildIndicatorDot(1, isDark, accentColor),
+      ],
     );
   }
 
-  Widget _buildToggleButton({
-    required String label,
-    required IconData icon,
-    required bool isActive,
-    required Color activeColor,
-    required Color inactiveColor,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildIndicatorDot(int index, bool isDark, Color accentColor) {
+    final isActive = _currentPage == index;
+    final inactiveColor =
+        (isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)
+            .withValues(alpha: 0.3);
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
-        onTap();
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        width: isActive ? 10 : 8,
+        height: isActive ? 10 : 8,
         decoration: BoxDecoration(
-          color: isActive ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: activeColor.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? Colors.white : inactiveColor,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? Colors.white : inactiveColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
-            ),
-          ],
+          shape: BoxShape.circle,
+          color: isActive ? accentColor : inactiveColor,
         ),
       ),
     );
   }
+
+
 
   void _showHelpSheet(BuildContext context, bool isDark, bool isQueryMode) {
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
