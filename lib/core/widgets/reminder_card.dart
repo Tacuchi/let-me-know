@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 
 import '../constants/constants.dart';
 import '../../features/reminders/domain/entities/reminder.dart';
 import '../../features/reminders/domain/entities/reminder_type.dart';
 import '../../features/reminders/domain/entities/reminder_status.dart';
+
+import '../../../../di/injection_container.dart';
+import '../../../../core/services/feedback_service.dart';
 
 class ReminderCard extends StatefulWidget {
   final Reminder reminder;
@@ -33,6 +36,7 @@ class _ReminderCardState extends State<ReminderCard>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   Timer? _progressTimer;
+  late final FeedbackService _feedbackService;
 
   @override
   void initState() {
@@ -45,6 +49,8 @@ class _ReminderCardState extends State<ReminderCard>
       begin: 1.0,
       end: 0.98,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    
+    _feedbackService = getIt<FeedbackService>();
     
     // Iniciar timer si tiene fecha programada y muestra progreso
     _startProgressTimer();
@@ -101,7 +107,7 @@ class _ReminderCardState extends State<ReminderCard>
         onTapUp: (_) => _controller.reverse(),
         onTapCancel: () => _controller.reverse(),
         onTap: () {
-          HapticFeedback.lightImpact();
+          _feedbackService.light();
           widget.onTap?.call();
         },
         child: AnimatedContainer(
@@ -294,11 +300,12 @@ class _ReminderCardState extends State<ReminderCard>
           key: Key(widget.reminder.id),
           direction: direction,
           confirmDismiss: (dir) async {
-            HapticFeedback.mediumImpact();
             if (dir == DismissDirection.endToStart && allowDelete) {
+              await _feedbackService.medium();
               widget.onDelete?.call();
               return true;
             } else if (dir == DismissDirection.startToEnd && allowComplete) {
+              await _feedbackService.success();
               widget.onComplete?.call();
               return false;
             }

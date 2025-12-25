@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/core.dart';
+import '../../../../di/injection_container.dart';
+import '../../../../core/services/feedback_service.dart';
 import '../widgets/voice_command_mode.dart';
 import '../widgets/voice_query_mode.dart';
 
@@ -17,6 +19,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     with TickerProviderStateMixin {
   late final PageController _pageController;
   int _currentPage = 0;
+  late final FeedbackService _feedbackService;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -41,6 +44,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
     _fadeController.forward();
+    _feedbackService = getIt<FeedbackService>();
   }
 
   @override
@@ -76,7 +80,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
           icon: const Icon(Icons.close_rounded),
           tooltip: 'Cerrar',
           onPressed: () {
-            HapticFeedback.lightImpact();
+            _feedbackService.light();
             context.pop();
           },
         ),
@@ -94,7 +98,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
             icon: const Icon(Icons.help_outline_rounded),
             tooltip: 'Ayuda',
             onPressed: () {
-              HapticFeedback.lightImpact();
+              _feedbackService.light();
               _showHelpSheet(context, isDark, isQueryMode);
             },
           ),
@@ -109,7 +113,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
                 controller: _pageController,
                 scrollDirection: Axis.vertical,
                 onPageChanged: (page) {
-                  HapticFeedback.selectionClick();
+                  _feedbackService.selection();
                   setState(() => _currentPage = page);
                 },
                 children: [
@@ -152,7 +156,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
 
     return GestureDetector(
       onTap: () {
-        HapticFeedback.selectionClick();
+        _feedbackService.selection();
         _pageController.animateToPage(
           index,
           duration: const Duration(milliseconds: 300),

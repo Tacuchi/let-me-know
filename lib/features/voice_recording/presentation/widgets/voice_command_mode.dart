@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
+import '../../../../core/services/feedback_service.dart';
 import '../../../reminders/domain/entities/reminder.dart';
 import '../../../reminders/domain/entities/reminder_source.dart';
 import '../../../reminders/domain/entities/reminder_status.dart';
@@ -33,11 +34,13 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
   bool _isInitialized = false;
 
   late final SpeechToTextService _speechService;
+  late final FeedbackService _feedbackService;
 
   @override
   void initState() {
     super.initState();
     _speechService = getIt<SpeechToTextService>();
+    _feedbackService = getIt<FeedbackService>();
     _initializeSpeech();
   }
 
@@ -465,7 +468,7 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
           height: 48,
           child: OutlinedButton.icon(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              _feedbackService.light();
               setState(() {
                 _transcription = null;
                 _error = null;
@@ -490,7 +493,7 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
   }
 
   Future<void> _toggleRecording() async {
-    HapticFeedback.mediumImpact();
+    _feedbackService.medium();
 
     if (!_isInitialized) {
       if (mounted) {
@@ -582,6 +585,7 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     );
 
     await repository.save(reminder);
+    await _feedbackService.success();
 
     if (!mounted) return;
 

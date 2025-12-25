@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/core.dart';
+import '../../../../di/injection_container.dart';
+import '../../../../core/services/feedback_service.dart';
 import '../../application/cubit/reminder_list_cubit.dart';
 import '../../application/cubit/reminder_list_state.dart';
 import '../../domain/entities/reminder.dart';
@@ -25,6 +27,7 @@ class _ReminderListPageState extends State<ReminderListPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  late final FeedbackService _feedbackService;
 
   @override
   void initState() {
@@ -38,6 +41,7 @@ class _ReminderListPageState extends State<ReminderListPage>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
+    _feedbackService = getIt<FeedbackService>();
   }
 
   @override
@@ -82,7 +86,7 @@ class _ReminderListPageState extends State<ReminderListPage>
                   icon: const Icon(Icons.refresh_rounded),
                   tooltip: 'DEBUG: Refrescar',
                   onPressed: () {
-                    HapticFeedback.lightImpact();
+                    _feedbackService.light();
                     context.read<ReminderListCubit>().refresh();
                   },
                 ),
@@ -91,7 +95,7 @@ class _ReminderListPageState extends State<ReminderListPage>
                 icon: const Icon(Icons.search_rounded),
                 tooltip: 'Buscar',
                 onPressed: () {
-                  HapticFeedback.lightImpact();
+                  _feedbackService.light();
                   _showSearchSheet(context, isDark);
                 },
               ),
@@ -249,15 +253,15 @@ class _ReminderListPageState extends State<ReminderListPage>
           child: ReminderCard(
             reminder: reminder,
             onTap: () {
-              HapticFeedback.lightImpact();
+              _feedbackService.light();
               context.push('/reminders/${reminder.id}');
             },
             onComplete: () {
-              HapticFeedback.mediumImpact();
+              _feedbackService.success();
               context.read<ReminderListCubit>().markAsCompleted(reminder.id);
             },
             onDelete: () {
-              HapticFeedback.mediumImpact();
+              _feedbackService.medium();
               context.read<ReminderListCubit>().delete(reminder.id);
             },
           ),
@@ -517,13 +521,13 @@ class _SearchSheetContentState extends State<_SearchSheetContent> {
                               context.push('/reminders/${reminder.id}');
                             },
                             onComplete: () {
-                              HapticFeedback.mediumImpact();
+                              getIt<FeedbackService>().success();
                               context
                                   .read<ReminderListCubit>()
                                   .markAsCompleted(reminder.id);
                             },
                             onDelete: () {
-                              HapticFeedback.mediumImpact();
+                              getIt<FeedbackService>().medium();
                               context.read<ReminderListCubit>().delete(reminder.id);
                             },
                           ),
