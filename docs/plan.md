@@ -135,7 +135,7 @@
 
 ---
 
-### 📍 Prioridad 6: Consultas por Voz y Filtro de Notas ⏳ PENDIENTE
+### 📍 Prioridad 6: Consultas por Voz y Filtro de Notas ✅ COMPLETADA
 
 **Objetivo**: Permitir consultar notas por voz y separar notas de recordatorios en la UI.
 
@@ -143,37 +143,34 @@
 
 | # | Tarea | Estado |
 |---|-------|---------|
-| 6.1 | Agregar filtro "Notas" en ReminderListPage | ⏳ |
-| 6.2 | Excluir notas del filtro "Pendientes" | ⏳ |
-| 6.3 | Crear QueryService para procesar consultas | ⏳ |
-| 6.4 | UI de consulta por voz (reutilizar grabación) | ⏳ |
-| 6.5 | Alertas proactivas de recordatorios próximos | ⏳ |
+| 6.1 | Agregar filtro "Notas" en ReminderListPage | ✅ |
+| 6.2 | Excluir notas del filtro "Pendientes" | ✅ |
+| 6.3 | Crear QueryService para procesar consultas | ✅ |
+| 6.4 | UI de consulta por voz (reutilizar grabación) | ✅ |
+| 6.5 | Alertas proactivas de recordatorios próximos | ✅ |
 
 ---
 
-### 📍 Prioridad 7: Notificaciones Locales ⏳ PENDIENTE
+### 📍 Prioridad 7: Notificaciones Locales ✅ COMPLETADA
 
 **Objetivo**: Alertar al usuario cuando llegue la hora del recordatorio.
 
+**Plan detallado**: Ver `docs/plan-alarmas-notificaciones-v2.md`
+
 | # | Tarea | Estado |
 |---|-------|--------|
-| 7.1 | Agregar `flutter_local_notifications` a pubspec.yaml | ⏳ |
-| 7.2 | Configurar permisos iOS (`Info.plist`) | ⏳ |
-| 7.3 | Configurar canal Android (`AndroidManifest.xml`) | ⏳ |
-| 7.4 | Crear `NotificationService` | ⏳ |
-| 7.5 | Inicializar servicio en `main.dart` | ⏳ |
-| 7.6 | Programar notificación al guardar recordatorio | ⏳ |
-| 7.7 | Cancelar notificación al completar/eliminar | ⏳ |
-| 7.8 | Manejar tap en notificación (abrir app) | ⏳ |
-
-**Archivos a crear/modificar**:
-- `pubspec.yaml` (agregar dependencia)
-- `ios/Runner/Info.plist` (permisos)
-- `android/app/src/main/AndroidManifest.xml` (canal)
-- `lib/services/notifications/notification_service.dart` (nuevo)
-- `lib/di/injection_container.dart`
-- `lib/main.dart`
-- `lib/features/reminders/infrastructure/repositories/reminder_repository_drift_impl.dart`
+| 7.1 | Agregar `flutter_local_notifications` a pubspec.yaml | ✅ |
+| 7.2 | Configurar permisos iOS (`Info.plist`) | ✅ |
+| 7.3 | Configurar canal Android (`AndroidManifest.xml`) | ✅ |
+| 7.4 | Crear `NotificationService` con action buttons | ✅ |
+| 7.5 | Inicializar servicio en `main.dart` | ✅ |
+| 7.6 | Programar notificación al guardar recordatorio | ✅ |
+| 7.7 | Cancelar notificación al completar/eliminar | ✅ |
+| 7.8 | Manejar tap en notificación (abrir detalle) | ✅ |
+| 7.9 | Botones "✓ Listo" y "⏰ 5 min" en notificación | ✅ |
+| 7.10 | Background handler para acciones con app cerrada | ✅ |
+| 7.11 | Vista de detalle del recordatorio | ✅ |
+| 7.12 | Método snooze() en repositorio | ✅ |
 
 ---
 
