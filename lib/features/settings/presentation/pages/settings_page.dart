@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../../../app.dart';
 import '../../../../core/core.dart';
+import '../../../../di/injection_container.dart';
+import '../../../../services/tts/tts_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -21,6 +23,12 @@ class _SettingsPageState extends State<SettingsPage>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
+  // TTS settings
+  late final TtsService _ttsService;
+  List<TtsVoice> _availableVoices = [];
+  TtsVoice? _selectedVoice;
+  double _speechRate = 0.45;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +41,21 @@ class _SettingsPageState extends State<SettingsPage>
       end: 1.0,
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
+
+    _ttsService = getIt<TtsService>();
+    _loadTtsSettings();
+  }
+
+  Future<void> _loadTtsSettings() async {
+    await _ttsService.initialize();
+    final voices = await _ttsService.getAvailableVoices();
+    if (mounted) {
+      setState(() {
+        _availableVoices = voices;
+        _selectedVoice = _ttsService.currentVoice;
+        _speechRate = _ttsService.currentSpeechRate;
+      });
+    }
   }
 
   @override
@@ -178,6 +201,18 @@ class _SettingsPageState extends State<SettingsPage>
                 icon: Icons.mic_outlined,
                 isDark: isDark,
                 children: [
+                  _buildNavigationTile(
+                    context: context,
+                    title: 'Voz de respuesta',
+                    subtitle: _selectedVoice?.displayName ?? 'Por defecto',
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _showVoicePicker(context, isDark);
+                    },
+                    isDark: isDark,
+                    icon: Icons.record_voice_over_rounded,
+                  ),
+                  _buildSpeechRateTile(context, isDark),
                   _buildNavigationTile(
                     context: context,
                     title: 'Idioma de reconocimiento',
@@ -990,6 +1025,268 @@ class _SettingsPageState extends State<SettingsPage>
                             ),
                           );
                         },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSpeechRateTile(BuildContext context, bool isDark) {
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final helperColor = isDark ? AppColors.textHelperDark : AppColors.textHelper;
+    final primaryColor = isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+
+    String speedLabel;
+    if (_speechRate <= 0.3) {
+      speedLabel = 'Muy lenta';
+    } else if (_speechRate <= 0.45) {
+      speedLabel = 'Lenta';
+    } else if (_speechRate <= 0.55) {
+      speedLabel = 'Normal';
+    } else if (_speechRate <= 0.7) {
+      speedLabel = 'Rápida';
+    } else {
+      speedLabel = 'Muy rápida';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.speed_rounded, color: primaryColor, size: 22),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Velocidad de voz',
+                      style: AppTypography.bodyLarge.copyWith(color: textColor),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      speedLabel,
+                      style: AppTypography.helper.copyWith(color: helperColor),
+                    ),
+                  ],
+                ),
+              ),
+              // Botón de prueba
+              IconButton(
+                icon: Icon(Icons.play_circle_outline_rounded, color: primaryColor),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _ttsService.speak('Así suena mi voz con esta velocidad');
+                },
+                tooltip: 'Probar voz',
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Icon(Icons.slow_motion_video_rounded, size: 16, color: helperColor),
+              Expanded(
+                child: Slider(
+                  value: _speechRate,
+                  min: 0.2,
+                  max: 0.8,
+                  divisions: 6,
+                  activeColor: primaryColor,
+                  inactiveColor: helperColor.withValues(alpha: 0.3),
+                  onChanged: (value) {
+                    setState(() => _speechRate = value);
+                  },
+                  onChangeEnd: (value) {
+                    HapticFeedback.selectionClick();
+                    _ttsService.setSpeechRate(value).then((_) {
+                      if (mounted) _showSavedFeedback(context);
+                    });
+                  },
+                ),
+              ),
+              Icon(Icons.directions_run_rounded, size: 16, color: helperColor),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showVoicePicker(BuildContext context, bool isDark) {
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final helperColor = isDark ? AppColors.textHelperDark : AppColors.textHelper;
+    final primaryColor = isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+
+    if (_availableVoices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No hay voces disponibles en español'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: bgColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            minChildSize: 0.4,
+            maxChildSize: 0.85,
+            expand: false,
+            builder: (context, scrollController) {
+              return Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.dividerDark : AppColors.divider,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Voz de respuesta',
+                      style: AppTypography.titleMedium.copyWith(color: textColor),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Toca una voz para escucharla',
+                      style: AppTypography.helper.copyWith(color: helperColor),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: _availableVoices.length,
+                        itemBuilder: (context, index) {
+                          final voice = _availableVoices[index];
+                          final isSelected = voice == _selectedVoice;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? primaryColor.withValues(alpha: 0.1)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                              border: Border.all(
+                                color: isSelected
+                                    ? primaryColor
+                                    : helperColor.withValues(alpha: 0.3),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: InkWell(
+                              onTap: () async {
+                                HapticFeedback.selectionClick();
+                                await _ttsService.setVoice(voice);
+                                setState(() => _selectedVoice = voice);
+                                // Reproducir muestra
+                                await _ttsService.speak('Hola, esta es mi voz');
+                              },
+                              onLongPress: () async {
+                                // Seleccionar y cerrar
+                                HapticFeedback.mediumImpact();
+                                await _ttsService.setVoice(voice);
+                                setState(() => _selectedVoice = voice);
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                  _showSavedFeedback(context);
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.sm,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isSelected
+                                          ? Icons.check_circle_rounded
+                                          : Icons.circle_outlined,
+                                      color: isSelected ? primaryColor : helperColor,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            voice.displayName,
+                                            style: TextStyle(
+                                              color: textColor,
+                                              fontSize: 16,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            voice.locale,
+                                            style: TextStyle(
+                                              color: helperColor,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.play_circle_outline_rounded,
+                                      color: primaryColor,
+                                      size: 24,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Mantén presionado para confirmar',
+                      style: AppTypography.helper.copyWith(
+                        color: helperColor,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
                   ],
