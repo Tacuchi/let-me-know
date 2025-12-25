@@ -186,8 +186,8 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
     final gradientEnd = isDark
-        ? const Color(0xFFE8956A)
-        : const Color(0xFFD4784A);
+        ? AppColors.accentTertiary
+        : AppColors.accentTertiary;
 
     return ScaleTransition(
       scale: _fabScaleAnimation,

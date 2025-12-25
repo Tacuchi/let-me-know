@@ -45,10 +45,10 @@ abstract final class AppColors {
   // TEMA OSCURO
   // ==========================================================================
   
-  // Fondos oscuros con tinte verde - ajustados para buen contraste
-  static const Color bgPrimaryDark = Color(0xFF121A12);    // Fondo principal oscuro
-  static const Color bgSecondaryDark = Color(0xFF1E2D1E);  // Tarjetas/cards
-  static const Color bgTertiaryDark = Color(0xFF2A3D2A);   // Elementos elevados
+  // Fondos oscuros - gris neutro con tinte verde muy sutil
+  static const Color bgPrimaryDark = Color(0xFF121212);    // Gris casi negro
+  static const Color bgSecondaryDark = Color(0xFF1E1E1E);  // Gris oscuro para cards
+  static const Color bgTertiaryDark = Color(0xFF2D2D2D);   // Gris medio para elevados
 
   // Acentos en modo oscuro
   static const Color accentPrimaryDark = Color(0xFFAED581);   // Verde lima claro
@@ -59,9 +59,9 @@ abstract final class AppColors {
   static const Color textSecondaryDark = Color(0xFFB8D4B8); // Verde claro
   static const Color textHelperDark = Color(0xFF8CA88C);    // Verde medio
 
-  // Divisores en modo oscuro
-  static const Color dividerDark = Color(0xFF2E4A2E);      // Verde oscuro
-  static const Color outlineDark = Color(0xFF3D5C3D);
+  // Divisores en modo oscuro - grises neutros
+  static const Color dividerDark = Color(0xFF333333);      // Gris oscuro
+  static const Color outlineDark = Color(0xFF444444);      // Gris medio
 
   // ==========================================================================
   // ESTADOS
