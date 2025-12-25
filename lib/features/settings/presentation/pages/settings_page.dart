@@ -5,6 +5,8 @@ import '../../../../app.dart';
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../services/tts/tts_service.dart';
+import '../../../../core/services/feedback_service.dart';
+import '../../../reminders/domain/repositories/reminder_repository.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -15,10 +17,10 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage>
     with SingleTickerProviderStateMixin {
-  bool _voiceGuides = true;
+  // Feedback settings
+  late final FeedbackService _feedbackService;
   bool _vibration = true;
-  bool _repeatAlert = true;
-  bool _improveTranscription = true;
+  bool _sound = true;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -43,6 +45,12 @@ class _SettingsPageState extends State<SettingsPage>
     _fadeController.forward();
 
     _ttsService = getIt<TtsService>();
+    _feedbackService = getIt<FeedbackService>();
+    
+    // Cargar preferencias iniciales
+    _vibration = _feedbackService.isVibrationEnabled;
+    _sound = _feedbackService.isSoundEnabled;
+    
     _loadTtsSettings();
   }
 
@@ -101,7 +109,7 @@ class _SettingsPageState extends State<SettingsPage>
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             children: [
-              // Sección: Apariencia (nueva)
+              // Sección: Apariencia
               _buildSection(
                 context: context,
                 title: 'Apariencia',
@@ -113,91 +121,48 @@ class _SettingsPageState extends State<SettingsPage>
                 ],
               ),
 
-              // Sección: Accesibilidad
+              // Sección: Experiencia
               _buildSection(
                 context: context,
-                title: 'Accesibilidad',
-                icon: Icons.accessibility_new_rounded,
+                title: 'Experiencia',
+                icon: Icons.touch_app_rounded,
                 isDark: isDark,
                 children: [
                   _buildSwitchTile(
                     context: context,
-                    title: 'Guías de voz',
-                    subtitle: 'Narrar instrucciones y confirmaciones',
-                    value: _voiceGuides,
-                    onChanged: (value) {
-                      HapticFeedback.selectionClick();
-                      setState(() => _voiceGuides = value);
-                      _showSavedFeedback(context);
-                    },
-                    isDark: isDark,
-                    icon: Icons.record_voice_over_rounded,
-                  ),
-                  _buildSwitchTile(
-                    context: context,
                     title: 'Vibración',
-                    subtitle: 'Feedback háptico en acciones',
+                    subtitle: 'Feedback táctil al interactuar',
                     value: _vibration,
                     onChanged: (value) {
-                      if (value) HapticFeedback.mediumImpact();
+                      if (value) _feedbackService.medium();
                       setState(() => _vibration = value);
+                      _feedbackService.setVibrationEnabled(value);
                       _showSavedFeedback(context);
                     },
                     isDark: isDark,
                     icon: Icons.vibration_rounded,
                   ),
-                ],
-              ),
-
-              // Sección: Notificaciones
-              _buildSection(
-                context: context,
-                title: 'Notificaciones',
-                icon: Icons.notifications_outlined,
-                isDark: isDark,
-                children: [
-                  _buildNavigationTile(
-                    context: context,
-                    title: 'Sonido de alerta',
-                    subtitle: 'Campana suave',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      _showSoundPicker(context, isDark);
-                    },
-                    isDark: isDark,
-                    icon: Icons.music_note_rounded,
-                  ),
                   _buildSwitchTile(
                     context: context,
-                    title: 'Repetir alerta',
-                    subtitle: 'Si no confirmo el recordatorio',
-                    value: _repeatAlert,
+                    title: 'Sonidos',
+                    subtitle: 'Efectos de audio del sistema',
+                    value: _sound,
                     onChanged: (value) {
-                      HapticFeedback.selectionClick();
-                      setState(() => _repeatAlert = value);
+                      if (value) _feedbackService.click();
+                      setState(() => _sound = value);
+                      _feedbackService.setSoundEnabled(value);
                       _showSavedFeedback(context);
                     },
                     isDark: isDark,
-                    icon: Icons.repeat_rounded,
-                  ),
-                  _buildNavigationTile(
-                    context: context,
-                    title: 'Horario silencioso',
-                    subtitle: '10:00 PM - 7:00 AM',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      // TODO: Implementar selector de horario
-                    },
-                    isDark: isDark,
-                    icon: Icons.nights_stay_rounded,
+                    icon: Icons.volume_up_rounded,
                   ),
                 ],
               ),
 
-              // Sección: Voz y Transcripción
+              // Sección: Voz
               _buildSection(
                 context: context,
-                title: 'Voz y Transcripción',
+                title: 'Voz',
                 icon: Icons.mic_outlined,
                 isDark: isDark,
                 children: [
@@ -206,36 +171,44 @@ class _SettingsPageState extends State<SettingsPage>
                     title: 'Voz de respuesta',
                     subtitle: _selectedVoice?.displayName ?? 'Por defecto',
                     onTap: () {
-                      HapticFeedback.lightImpact();
+                      _feedbackService.light();
                       _showVoicePicker(context, isDark);
                     },
                     isDark: isDark,
                     icon: Icons.record_voice_over_rounded,
                   ),
                   _buildSpeechRateTile(context, isDark),
+                ],
+              ),
+
+              // Sección: Datos
+              _buildSection(
+                context: context,
+                title: 'Datos',
+                icon: Icons.storage_rounded,
+                isDark: isDark,
+                children: [
                   _buildNavigationTile(
                     context: context,
-                    title: 'Idioma de reconocimiento',
-                    subtitle: 'Español (México)',
+                    title: 'Borrar todos los recordatorios',
+                    subtitle: 'Eliminar permanentemente',
                     onTap: () {
-                      HapticFeedback.lightImpact();
-                      // TODO: Implementar selector de idioma
+                      _feedbackService.light();
+                      _showDeleteAllConfirmation(context, isDark);
                     },
                     isDark: isDark,
-                    icon: Icons.language_rounded,
+                    icon: Icons.delete_forever_rounded,
                   ),
-                  _buildSwitchTile(
+                  _buildNavigationTile(
                     context: context,
-                    title: 'Mejorar transcripción',
-                    subtitle: 'Usar IA para corregir errores',
-                    value: _improveTranscription,
-                    onChanged: (value) {
-                      HapticFeedback.selectionClick();
-                      setState(() => _improveTranscription = value);
-                      _showSavedFeedback(context);
+                    title: 'Permisos de la app',
+                    subtitle: 'Configuración del sistema',
+                    onTap: () {
+                      _feedbackService.light();
+                      _openAppSettings();
                     },
                     isDark: isDark,
-                    icon: Icons.auto_fix_high_rounded,
+                    icon: Icons.settings_applications_rounded,
                   ),
                 ],
               ),
@@ -254,25 +227,17 @@ class _SettingsPageState extends State<SettingsPage>
                     isDark: isDark,
                     icon: Icons.verified_rounded,
                   ),
-                  _buildNavigationTile(
+                  _buildInfoTile(
                     context: context,
                     title: 'Tutorial',
-                    subtitle: 'Ver guía de uso',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      // TODO: Implementar tutorial
-                    },
+                    subtitle: 'Próximamente',
                     isDark: isDark,
                     icon: Icons.school_rounded,
                   ),
-                  _buildNavigationTile(
+                  _buildInfoTile(
                     context: context,
                     title: 'Soporte',
-                    subtitle: 'Contactar ayuda',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      // TODO: Implementar soporte
-                    },
+                    subtitle: 'Próximamente',
                     isDark: isDark,
                     icon: Icons.support_agent_rounded,
                   ),
@@ -799,94 +764,118 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-  void _showSoundPicker(BuildContext context, bool isDark) {
+  void _showDeleteAllConfirmation(BuildContext context, bool isDark) {
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
     final textColor = isDark
         ? AppColors.textPrimaryDark
         : AppColors.textPrimary;
-    final primaryColor = isDark
-        ? AppColors.accentPrimaryDark
-        : AppColors.accentPrimary;
+    final dangerColor = AppColors.error;
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: bgColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.dividerDark : AppColors.divider,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Sonido de alerta',
-                  style: AppTypography.titleMedium.copyWith(color: textColor),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                ...[
-                  'Campana suave',
-                  'Melodía amable',
-                  'Tono clásico',
-                  'Sin sonido',
-                ].map((sound) {
-                  final isSelected = sound == 'Campana suave';
-                  return ListTile(
-                    leading: Icon(
-                      isSelected
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                      color: isSelected
-                          ? primaryColor
-                          : (isDark
-                                ? AppColors.textHelperDark
-                                : AppColors.textHelper),
-                    ),
-                    title: Text(
-                      sound,
-                      style: TextStyle(
-                        color: textColor,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                    trailing: sound != 'Sin sonido'
-                        ? IconButton(
-                            icon: Icon(
-                              Icons.play_circle_filled_rounded,
-                              color: primaryColor,
-                            ),
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              // TODO: Reproducir sonido
-                            },
-                          )
-                        : null,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.pop(context);
-                    },
-                  );
-                }),
-                const SizedBox(height: AppSpacing.md),
-              ],
+      builder: (context) => AlertDialog(
+        backgroundColor: bgColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: dangerColor),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                '¿Borrar todo?',
+                style: AppTypography.titleMedium.copyWith(color: textColor),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Esta acción eliminará permanentemente todos tus recordatorios. No se puede deshacer.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary),
             ),
           ),
-        );
-      },
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteAllReminders();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: dangerColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Borrar todo'),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _deleteAllReminders() async {
+    try {
+      final repository = getIt<ReminderRepository>();
+      final reminders = await repository.getAll();
+      for (final reminder in reminders) {
+        await repository.delete(reminder.id);
+      }
+      
+      if (!mounted) return;
+      _feedbackService.success();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: AppSpacing.sm),
+              Text('Todos los recordatorios eliminados'),
+            ],
+          ),
+          backgroundColor: AppColors.accentSecondary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _feedbackService.error();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al borrar: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openAppSettings() async {
+    // Abrir configuración del sistema para la app
+    // Usamos el canal de métodos de Flutter para abrir la configuración
+    const channel = MethodChannel('app.channel.settings');
+    try {
+      await channel.invokeMethod('openAppSettings');
+    } catch (e) {
+      // Fallback: mostrar mensaje informativo
+      if (!mounted) return;
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Abre Ajustes > Apps > Let Me Know para gestionar permisos'),
+          backgroundColor: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _showTextSizePicker(BuildContext outerContext, bool isDark) {
@@ -1116,11 +1105,11 @@ class _SettingsPageState extends State<SettingsPage>
                   onChanged: (value) {
                     setState(() => _speechRate = value);
                   },
-                  onChangeEnd: (value) {
-                    HapticFeedback.selectionClick();
-                    _ttsService.setSpeechRate(value).then((_) {
-                      if (mounted) _showSavedFeedback(context);
-                    });
+                  onChangeEnd: (value) async {
+                    await _feedbackService.selection();
+                    await _ttsService.setSpeechRate(value);
+                    if (!context.mounted) return;
+                    _showSavedFeedback(context);
                   },
                 ),
               ),
