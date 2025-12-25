@@ -208,6 +208,37 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
   }
 
   @override
+  Future<void> snooze(String id, Duration duration) async {
+    final reminder = await getById(id);
+    if (reminder == null) return;
+
+    // Cancelar notificación actual si existe
+    if (reminder.notificationId != null) {
+      final notificationService = getIt<NotificationService>();
+      await notificationService.cancelNotification(reminder.notificationId!);
+    }
+
+    final newTime = DateTime.now().add(duration);
+
+    await (_db.update(_db.reminders)..where((t) => t.id.equals(id))).write(
+      RemindersCompanion(
+        scheduledAtMs: Value(newTime.millisecondsSinceEpoch),
+        snoozedUntilMs: Value(newTime.millisecondsSinceEpoch),
+        status: const Value('pending'),
+        updatedAtMs: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+
+    // Reprogramar notificación con nuevo tiempo
+    if (reminder.hasNotification) {
+      final notificationService = getIt<NotificationService>();
+      await notificationService.scheduleNotification(
+        reminder.copyWith(scheduledAt: newTime),
+      );
+    }
+  }
+
+  @override
   Stream<List<Reminder>> watchAll() {
     return (_db.select(_db.reminders)
           ..orderBy([(t) => OrderingTerm.asc(t.scheduledAtMs)]))

@@ -32,6 +32,9 @@ abstract class ReminderRepository {
 
   Future<void> markAsCompleted(String id);
 
+  /// Pospone un recordatorio por una duración específica
+  Future<void> snooze(String id, Duration duration);
+
   Stream<List<Reminder>> watchAll();
 
   Stream<List<Reminder>> watchForToday();

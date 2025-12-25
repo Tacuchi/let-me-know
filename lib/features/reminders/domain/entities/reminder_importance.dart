@@ -9,4 +9,6 @@ extension ReminderImportanceX on ReminderImportance {
       ReminderImportance.info => 'Info',
     };
   }
+
+  String get displayName => label;
 }

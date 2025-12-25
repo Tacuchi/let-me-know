@@ -98,7 +98,11 @@ class Reminder extends Equatable {
     );
   }
 
+  /// Si es una nota (tipo location) en lugar de un recordatorio con alarma
+  bool get isNote => type.isNote;
+
   bool get isOverdue =>
+      !isNote &&
       status == ReminderStatus.pending &&
       scheduledAt != null &&
       scheduledAt!.isBefore(DateTime.now());
