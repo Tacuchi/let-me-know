@@ -107,6 +107,7 @@ class TextParserServiceImpl implements TextParserService {
 
   // Números en texto
   static const _numberWords = {
+    'un': 1,
     'una': 1,
     'uno': 1,
     'dos': 2,
@@ -120,6 +121,11 @@ class TextParserServiceImpl implements TextParserService {
     'diez': 10,
     'once': 11,
     'doce': 12,
+    'quince': 15,
+    'veinte': 20,
+    'treinta': 30,
+    'cuarenta': 40,
+    'media': 30, // "media hora"
   };
 
   @override
@@ -134,9 +140,15 @@ class TextParserServiceImpl implements TextParserService {
     }
 
     final lowerText = text.toLowerCase();
-    final type = _detectType(lowerText);
-    final importance = _importanceByType[type] ?? ReminderImportance.medium;
     final title = _extractTitle(text);
+    
+    // Extraer fecha PRIMERO - si hay tiempo relativo, NO es una nota de ubicación
+    final scheduledAt = _extractDateTime(lowerText);
+    final hasRelativeTime = _hasRelativeTimePattern(lowerText);
+    
+    // Detectar tipo (pero si hay tiempo relativo, excluir location)
+    final type = _detectType(lowerText, excludeLocation: hasRelativeTime);
+    final importance = _importanceByType[type] ?? ReminderImportance.medium;
 
     // Para tipo location, no programar fecha y extraer object/location
     if (type == ReminderType.location) {
@@ -151,7 +163,6 @@ class TextParserServiceImpl implements TextParserService {
       );
     }
 
-    final scheduledAt = _extractDateTime(lowerText);
     return ParsedReminder(
       title: title,
       type: type,
@@ -177,8 +188,20 @@ class TextParserServiceImpl implements TextParserService {
     return '$truncated...';
   }
 
-  ReminderType _detectType(String lowerText) {
+  /// Verifica si el texto contiene un patrón de tiempo relativo
+  bool _hasRelativeTimePattern(String lowerText) {
+    final relativePattern = RegExp(
+      r'en (\d+|un|una|uno|dos|tres|cuatro|cinco|diez|quince|veinte|treinta) (hora|horas|minuto|minutos|min|mins|segundo|segundos|seg)',
+    );
+    return relativePattern.hasMatch(lowerText);
+  }
+
+  ReminderType _detectType(String lowerText, {bool excludeLocation = false}) {
     for (final entry in _typeKeywords.entries) {
+      // Si hay tiempo relativo, no clasificar como location
+      if (excludeLocation && entry.key == ReminderType.location) {
+        continue;
+      }
       for (final keyword in entry.value) {
         if (lowerText.contains(keyword)) {
           return entry.key;
@@ -251,8 +274,10 @@ class TextParserServiceImpl implements TextParserService {
       return DateTime(now.year, now.month, now.day + 2, 9, 0);
     }
 
-    // Patrón: "en X horas" o "en X minutos"
-    final relativePattern = RegExp(r'en (\d+|una|uno|dos|tres|cuatro|cinco) (hora|horas|minuto|minutos)');
+    // Patrón: "en X horas" o "en X minutos" (incluye variaciones comunes)
+    final relativePattern = RegExp(
+      r'en (\d+|un|una|uno|dos|tres|cuatro|cinco|diez|quince|veinte|treinta) (hora|horas|minuto|minutos|min|mins)',
+    );
     final relativeMatch = relativePattern.firstMatch(lowerText);
     if (relativeMatch != null) {
       final amountStr = relativeMatch.group(1)!;
