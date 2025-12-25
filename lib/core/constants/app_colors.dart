@@ -24,10 +24,10 @@ abstract final class AppColors {
   static const Color bgSecondary = Color(0xFFFFFFFF);    // Blanco
   static const Color bgTertiary = Color(0xFFEDF5ED);     // Verde pálido
 
-  // Acentos (naranja coral para acciones - contrasta con verde)
-  static const Color accentPrimary = Color(0xFFE88B5A);  // Naranja coral (FAB, mic)
-  static const Color accentSecondary = Color(0xFF26A69A); // Teal (secundario)
-  static const Color accentTertiary = Color(0xFF5C6BC0); // Indigo (terciario)
+  // Acentos (verde lima para acciones)
+  static const Color accentPrimary = Color(0xFF8BC34A);   // Verde lima (FAB, botones)
+  static const Color accentSecondary = Color(0xFFAED581); // Verde lima claro
+  static const Color accentTertiary = Color(0xFF689F38); // Verde lima oscuro
 
   // Texto
   static const Color textPrimary = Color(0xFF1B2E1B);    // Verde muy oscuro
@@ -51,8 +51,8 @@ abstract final class AppColors {
   static const Color bgTertiaryDark = Color(0xFF2A3D2A);   // Elementos elevados
 
   // Acentos en modo oscuro
-  static const Color accentPrimaryDark = Color(0xFFFFAB7A);   // Naranja claro
-  static const Color accentSecondaryDark = Color(0xFF80CBC4); // Teal claro
+  static const Color accentPrimaryDark = Color(0xFFAED581);   // Verde lima claro
+  static const Color accentSecondaryDark = Color(0xFFC5E1A5); // Verde lima muy claro
 
   // Texto en modo oscuro - colores claros para buen contraste
   static const Color textPrimaryDark = Color(0xFFF5F5F5);   // Casi blanco
@@ -71,7 +71,7 @@ abstract final class AppColors {
   static const Color error = Color(0xFFE57373);        // Rojo error
   static const Color errorContainer = Color(0xFFFFDAD6);
   static const Color warning = Color(0xFFFFB74D);      // Ámbar advertencia
-  static const Color recording = Color(0xFFFF7043);    // Naranja grabando
+  static const Color recording = Color(0xFF689F38);    // Verde lima oscuro grabando
   
   // Estados de recordatorios
   static const Color completed = Color(0xFF81C784);    // Verde completado
@@ -103,7 +103,7 @@ abstract final class AppColors {
   static const LinearGradient accentGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [accentPrimary, Color(0xFFD4784A)],
+    colors: [accentPrimary, Color(0xFF689F38)],
   );
 
   static const LinearGradient surfaceGradient = LinearGradient(
