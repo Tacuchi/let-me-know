@@ -1,21 +1,21 @@
 # 📋 Plan de Implementación - Let Me Know
 
-**Versión**: 1.2  
+**Versión**: 1.3  
 **Fecha de inicio**: 11 de diciembre de 2025  
-**Última actualización**: 12 de diciembre de 2025  
+**Última actualización**: 24 de diciembre de 2025  
 **Metodología**: Implementación atómica (una feature, probar, siguiente)
 
 ---
 
-## 📊 Estado Actual (Auditoría 12/dic/2025)
+## 📊 Estado Actual (Auditoría 24/dic/2025)
 
 ### ✅ Completado
 - [x] Estructura base de carpetas (Clean Architecture)
-- [x] Entidad `Reminder` con `copyWith`, helpers (`isOverdue`, `isToday`, etc.)
-- [x] Enums `ReminderType` y `ReminderStatus` con extensiones
-- [x] Interfaz `ReminderRepository` (contrato)
+- [x] Entidad `Reminder` completa con `copyWith`, helpers (`isOverdue`, `isToday`, etc.)
+- [x] Enums completos: `ReminderType`, `ReminderStatus`, `ReminderImportance`, `ReminderSource`
+- [x] Interfaz `ReminderRepository` (contrato) con `search()`, `getUpcoming()`, `watchUpcoming()`
 - [x] UI de lista de recordatorios con filtros (Todos, Hoy, Pendientes, Completados)
-- [x] Widgets reutilizables (`ReminderCard`, `AnimatedCounter`, `AnimatedMicButton`, etc.)
+- [x] Widgets reutilizables (`ReminderCard`, `AnimatedCounter`, `AnimatedMicButton`, `GlassCard`, etc.)
 - [x] Sistema de navegación con `go_router` (shell + tabs)
 - [x] Configuración de dependencias (`get_it`)
 - [x] Tema y colores de la app (modo claro/oscuro)
@@ -29,20 +29,20 @@
 - [x] Swipe actions en `ReminderCard` (completar/eliminar)
 - [x] Marcar recordatorio como completado
 - [x] Eliminar recordatorio
-
 - [x] HomePage: Recordatorios próximos con datos reales
 - [x] Búsqueda de recordatorios funcional (SQL LIKE)
 - [x] Historial: Filtros por período y tipo de recordatorio
 - [x] Settings: Tamaño de texto funcional con persistencia
 
 ### ⚠️ Parcialmente Implementado
-- [ ] **Creación de recordatorio desde voz**: Transcripción se guarda como `description`, pero usa datos MOCK
+- [x] **Creación de recordatorio desde voz**: TextParserService extrae título, tipo, fecha e importancia de la transcripción
 
-### ❌ Pendiente (Pospuesto)
-- [ ] Clasificación con IA (Gemini) - **POSPUESTO**
+### ❌ Pendiente
+- [ ] **Consultas por voz y filtro de notas** - **PRIORIDAD ALTA** (ver `docs/plan-consultas-voz.md`)
+- [ ] Notificaciones locales - **PRIORIDAD ALTA** (ver `docs/plan-notificaciones.md`)
+- [ ] Clasificación con IA (Gemini) - **POSPUESTO** (ver `docs/backend-options.md`)
 - [ ] Página de detalle de recordatorio
 - [ ] Formulario de creación/edición manual
-- [ ] Notificaciones locales
 
 ---
 
@@ -114,20 +114,57 @@
 
 ---
 
-### 📍 Prioridad 5: Notificaciones Locales ⏳ PENDIENTE
+### 📍 Prioridad 5: Creación Real desde Voz ✅ COMPLETADA
+
+**Objetivo**: Reemplazar datos MOCK con extracción básica de la transcripción.
+
+| # | Tarea | Estado |
+|---|-------|---------|
+| 5.1 | Usar transcripción como título (truncar a 60 chars) | ✅ |
+| 5.2 | Detectar palabras clave para tipo (pastilla→medicamento, doctor→cita, etc.) | ✅ |
+| 5.3 | Extraer hora con regex básico ("a las 3", "mañana", etc.) | ✅ |
+| 5.4 | Asignar importancia según tipo detectado | ✅ |
+| 5.5 | Extraer object/location para notas de ubicación | ✅ |
+| 5.6 | Mostrar preview editable antes de guardar | ⏳ (opcional, pospuesto) |
+
+**Archivos creados/modificados**:
+- `lib/services/text_parser/text_parser_service.dart` (interfaz + ParsedReminder)
+- `lib/services/text_parser/text_parser_service_impl.dart` (implementación)
+- `lib/features/voice_recording/presentation/pages/voice_recording_page.dart`
+- `lib/di/injection_container.dart`
+
+---
+
+### 📍 Prioridad 6: Consultas por Voz y Filtro de Notas ⏳ PENDIENTE
+
+**Objetivo**: Permitir consultar notas por voz y separar notas de recordatorios en la UI.
+
+**Plan detallado**: Ver `docs/plan-consultas-voz.md`
+
+| # | Tarea | Estado |
+|---|-------|---------|
+| 6.1 | Agregar filtro "Notas" en ReminderListPage | ⏳ |
+| 6.2 | Excluir notas del filtro "Pendientes" | ⏳ |
+| 6.3 | Crear QueryService para procesar consultas | ⏳ |
+| 6.4 | UI de consulta por voz (reutilizar grabación) | ⏳ |
+| 6.5 | Alertas proactivas de recordatorios próximos | ⏳ |
+
+---
+
+### 📍 Prioridad 7: Notificaciones Locales ⏳ PENDIENTE
 
 **Objetivo**: Alertar al usuario cuando llegue la hora del recordatorio.
 
 | # | Tarea | Estado |
 |---|-------|--------|
-| 5.1 | Agregar `flutter_local_notifications` a pubspec.yaml | ⏳ |
-| 5.2 | Configurar permisos iOS (`Info.plist`) | ⏳ |
-| 5.3 | Configurar canal Android (`AndroidManifest.xml`) | ⏳ |
-| 5.4 | Crear `NotificationService` | ⏳ |
-| 5.5 | Inicializar servicio en `main.dart` | ⏳ |
-| 5.6 | Programar notificación al guardar recordatorio | ⏳ |
-| 5.7 | Cancelar notificación al completar/eliminar | ⏳ |
-| 5.8 | Manejar tap en notificación (abrir app) | ⏳ |
+| 7.1 | Agregar `flutter_local_notifications` a pubspec.yaml | ⏳ |
+| 7.2 | Configurar permisos iOS (`Info.plist`) | ⏳ |
+| 7.3 | Configurar canal Android (`AndroidManifest.xml`) | ⏳ |
+| 7.4 | Crear `NotificationService` | ⏳ |
+| 7.5 | Inicializar servicio en `main.dart` | ⏳ |
+| 7.6 | Programar notificación al guardar recordatorio | ⏳ |
+| 7.7 | Cancelar notificación al completar/eliminar | ⏳ |
+| 7.8 | Manejar tap en notificación (abrir app) | ⏳ |
 
 **Archivos a crear/modificar**:
 - `pubspec.yaml` (agregar dependencia)
@@ -177,11 +214,17 @@ lib/
 
 | Funcionalidad | Estimación | Prioridad |
 |---------------|------------|-----------|
-| HomePage - Próximos recordatorios | 1-2 horas | 🔴 Alta |
-| Búsqueda de recordatorios | 1-2 horas | 🔴 Alta |
-| Notificaciones locales | 3-4 horas | 🔴 Alta |
+| ~~HomePage - Próximos recordatorios~~ | ~~1-2 horas~~ | ✅ Completada |
+| ~~Búsqueda de recordatorios~~ | ~~1-2 horas~~ | ✅ Completada |
+| ~~Historial - Filtros~~ | ~~1-2 horas~~ | ✅ Completada |
+| ~~Settings - Tamaño de texto~~ | ~~1-2 horas~~ | ✅ Completada |
+| ~~Creación real desde voz~~ | ~~2-3 horas~~ | ✅ Completada |
+| **Consultas por voz y filtro notas** | 4-6 horas | 🔴 Alta |
+| **Notificaciones locales** | 3-4 horas | 🔴 Alta |
+| Clasificación IA (Gemini) | 4-6 horas | 🟡 Pospuesto |
+| Formulario edición manual | 2-3 horas | 🟢 Baja |
 
-**Total estimado**: ~6-8 horas
+**Total pendiente**: ~9-13 horas
 
 ---
 
@@ -198,9 +241,11 @@ lib/
 
 ## 🐛 Bugs/Deuda Técnica
 
-1. **VoiceRecording usa datos mock**: Transcripción no se procesa (título fijo)
+1. ~~**🔴 CRÍTICO - VoiceRecording usa datos MOCK**~~: ✅ RESUELTO - TextParserService extrae datos reales
+
 2. **No hay confirmación antes de eliminar**: Swipe elimina directamente
-3. **Búsquedas recientes hardcodeadas**: ['pastillas', 'doctor', 'compras']
+3. **Búsquedas recientes hardcodeadas**: `['pastillas', 'doctor', 'compras']`
+4. **Notas mezcladas con recordatorios**: Filtro "Pendientes" incluye notas de ubicación (ver plan-consultas-voz.md)
 
 ---
 
