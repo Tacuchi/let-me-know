@@ -65,9 +65,11 @@ class _ReminderCardState extends State<ReminderCard>
       case ReminderType.event:
         return AppColors.reminderEvent;
       case ReminderType.location:
-        return AppColors.reminderEvent; // fallback (se puede refinar luego)
+        return AppColors.reminderLocation;
     }
   }
+
+  bool get _isNote => widget.reminder.type == ReminderType.location;
 
   IconData get _typeIcon {
     switch (widget.reminder.type) {
@@ -92,7 +94,8 @@ class _ReminderCardState extends State<ReminderCard>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isCompleted = widget.reminder.status == ReminderStatus.completed;
-    final isOverdue = widget.reminder.status == ReminderStatus.overdue;
+    // Notas nunca están "vencidas" (no tienen fecha)
+    final isOverdue = !_isNote && widget.reminder.status == ReminderStatus.overdue;
 
     Widget card = ScaleTransition(
       scale: _scaleAnimation,
@@ -181,10 +184,55 @@ class _ReminderCardState extends State<ReminderCard>
                         color: AppColors.completed,
                         size: 24,
                       ),
+                    if (_isNote && !isCompleted)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _borderColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
+                        ),
+                        child: Text(
+                          'Nota',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _borderColor,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                if (widget.reminder.scheduledAt != null)
+                // Mostrar ubicación para notas, fecha para recordatorios
+                if (_isNote && widget.reminder.location != null)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.place_rounded,
+                        size: 16,
+                        color: _borderColor,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          widget.reminder.location!,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  )
+                else if (!_isNote && widget.reminder.scheduledAt != null)
                   Row(
                     children: [
                       Icon(
@@ -208,11 +256,15 @@ class _ReminderCardState extends State<ReminderCard>
                     ],
                   ),
                 if (widget.showProgress &&
+                    !_isNote && // No mostrar progreso para notas
                     widget.reminder.scheduledAt != null &&
                     !isCompleted &&
-                    !isOverdue) ...[
                   const SizedBox(height: AppSpacing.sm),
                   _buildProgressIndicator(isDark),
+                ],
+                if (widget.onComplete != null || widget.onDelete != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _buildActionButtons(isDark),
                 ],
               ],
             ),
@@ -222,36 +274,66 @@ class _ReminderCardState extends State<ReminderCard>
     );
 
     if (widget.onComplete != null || widget.onDelete != null) {
-      card = Dismissible(
-        key: Key(widget.reminder.id),
-        direction: DismissDirection.horizontal,
-        confirmDismiss: (direction) async {
-          HapticFeedback.mediumImpact();
-          if (direction == DismissDirection.endToStart) {
-            widget.onDelete?.call();
-            return widget.onDelete != null;
-          } else if (direction == DismissDirection.startToEnd) {
-            widget.onComplete?.call();
+      // Notas solo permiten eliminar, no completar
+      final allowComplete = !_isNote && widget.onComplete != null;
+      final allowDelete = widget.onDelete != null;
+
+      // Determinar dirección del swipe
+      final DismissDirection direction;
+      if (allowComplete && allowDelete) {
+        direction = DismissDirection.horizontal;
+      } else if (allowDelete) {
+        direction = DismissDirection.endToStart;
+      } else if (allowComplete) {
+        direction = DismissDirection.startToEnd;
+      } else {
+        direction = DismissDirection.none;
+      }
+
+      // Solo envolver en Dismissible si hay alguna dirección permitida
+      if (direction != DismissDirection.none) {
+        card = Dismissible(
+          key: Key(widget.reminder.id),
+          direction: direction,
+          confirmDismiss: (dir) async {
+            HapticFeedback.mediumImpact();
+            if (dir == DismissDirection.endToStart && allowDelete) {
+              widget.onDelete?.call();
+              return true;
+            } else if (dir == DismissDirection.startToEnd && allowComplete) {
+              widget.onComplete?.call();
+              return false;
+            }
             return false;
-          }
-          return false;
-        },
-        background: _buildSwipeBackground(
-          context,
-          alignment: Alignment.centerLeft,
-          color: AppColors.accentSecondary,
-          icon: Icons.check_rounded,
-          label: 'Completar',
-        ),
-        secondaryBackground: _buildSwipeBackground(
-          context,
-          alignment: Alignment.centerRight,
-          color: AppColors.error,
-          icon: Icons.delete_rounded,
-          label: 'Eliminar',
-        ),
-        child: card,
-      );
+          },
+          // Para endToStart solo necesitamos background (no secondaryBackground)
+          background: _buildSwipeBackground(
+            context,
+            alignment: direction == DismissDirection.endToStart
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            color: direction == DismissDirection.endToStart
+                ? AppColors.error
+                : AppColors.accentSecondary,
+            icon: direction == DismissDirection.endToStart
+                ? Icons.delete_rounded
+                : Icons.check_rounded,
+            label: direction == DismissDirection.endToStart
+                ? 'Eliminar'
+                : 'Completar',
+          ),
+          secondaryBackground: direction == DismissDirection.horizontal
+              ? _buildSwipeBackground(
+                  context,
+                  alignment: Alignment.centerRight,
+                  color: AppColors.error,
+                  icon: Icons.delete_rounded,
+                  label: 'Eliminar',
+                )
+              : null,
+          child: card,
+        );
+      }
     }
 
     return Semantics(
@@ -374,6 +456,49 @@ class _ReminderCardState extends State<ReminderCard>
             color: _borderColor,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(bool isDark) {
+    final hasComplete = widget.onComplete != null && !_isNote;
+    final hasDelete = widget.onDelete != null;
+
+    return Row(
+      children: [
+        if (hasDelete)
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                widget.onDelete?.call();
+              },
+              icon: const Icon(Icons.delete_outline_rounded, size: 20),
+              label: const Text('Eliminar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: BorderSide(color: AppColors.error.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
+        if (hasDelete && hasComplete) const SizedBox(width: AppSpacing.md),
+        if (hasComplete)
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                widget.onComplete?.call();
+              },
+              icon: const Icon(Icons.check_rounded, size: 20),
+              label: const Text('Completar'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accentSecondary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
       ],
     );
   }

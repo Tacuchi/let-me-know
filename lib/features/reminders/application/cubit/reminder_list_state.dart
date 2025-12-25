@@ -2,8 +2,9 @@ import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_status.dart';
+import '../../domain/entities/reminder_type.dart';
 
-enum ReminderListFilter { all, today, pending, completed }
+enum ReminderListFilter { all, today, pending, completed, notes }
 
 extension ReminderListFilterX on ReminderListFilter {
   String get label {
@@ -12,6 +13,7 @@ extension ReminderListFilterX on ReminderListFilter {
       ReminderListFilter.today => 'Hoy',
       ReminderListFilter.pending => 'Pendientes',
       ReminderListFilter.completed => 'Completados',
+      ReminderListFilter.notes => 'Notas',
     };
   }
 }
@@ -55,6 +57,7 @@ final class ReminderListLoaded extends ReminderListState {
         all
             .where(
               (r) =>
+                  r.type != ReminderType.location && // Excluir notas
                   r.scheduledAt != null &&
                   !r.scheduledAt!.isBefore(today) &&
                   r.scheduledAt!.isBefore(tomorrow),
@@ -64,13 +67,18 @@ final class ReminderListLoaded extends ReminderListState {
         all
             .where(
               (r) =>
-                  r.status == ReminderStatus.pending ||
-                  r.status == ReminderStatus.overdue,
+                  r.type != ReminderType.location && // Excluir notas
+                  (r.status == ReminderStatus.pending ||
+                   r.status == ReminderStatus.overdue),
             )
             .toList(growable: false),
       ReminderListFilter.completed =>
         all
             .where((r) => r.status == ReminderStatus.completed)
+            .toList(growable: false),
+      ReminderListFilter.notes =>
+        all
+            .where((r) => r.type == ReminderType.location)
             .toList(growable: false),
     };
   }

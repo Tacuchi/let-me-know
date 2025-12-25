@@ -25,6 +25,7 @@ abstract final class AppColors {
   static const Color pending = Color(0xFFFFE0B2);
   static const Color overdue = Color(0xFFFFCDD2);
   static const Color success = Color(0xFF4CAF50);
+  static const Color warning = Color(0xFFFFB74D);
 
   // Tema Claro - Divisores
   static const Color divider = Color(0xFFE8E8E8);
@@ -57,6 +58,7 @@ abstract final class AppColors {
   static const Color reminderShopping = Color(0xFFFFE082);
   static const Color reminderTask = Color(0xFFFFAB91);
   static const Color reminderEvent = Color(0xFF90CAF9);
+  static const Color reminderLocation = Color(0xFFB39DDB); // Morado suave para notas
 
   // Gradientes
   static const LinearGradient primaryGradient = LinearGradient(
