@@ -40,11 +40,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 300),
     );
     _slideController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 200),
     );
 
     _fadeAnimation = Tween<double>(
@@ -436,47 +436,106 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               }
 
-              return BlocBuilder<ReminderSummaryCubit, ReminderSummaryState>(
-                builder: (context, state) {
-                  final pending = state is ReminderSummaryLoaded
-                      ? state.pending
-                      : 0;
-                  final overdue = state is ReminderSummaryLoaded
-                      ? state.overdue
-                      : 0;
-                  final completed = state is ReminderSummaryLoaded
-                      ? state.completed
-                      : 0;
-
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: AnimatedCounter(
-                          value: pending,
-                          label: 'Pendientes',
-                          color: AppColors.pending,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: AnimatedCounter(
-                          value: overdue,
-                          label: 'Vencidos',
-                          color: AppColors.overdue,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: AnimatedCounter(
-                          value: completed,
-                          label: 'Completados',
-                          color: AppColors.completed,
-                        ),
-                      ),
-                    ],
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.md,
+                      horizontal: AppSpacing.sm,
+                    ),
+                    child: _buildSimpleSummaryText(pending, overdue, completed, isDark),
                   );
                 },
               );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleSummaryText(
+    int pending,
+    int overdue,
+    int completed,
+    bool isDark,
+  ) {
+    if (overdue > 0) {
+      return Column(
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 48, color: AppColors.overdue),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '¡Atención!',
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.overdue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Tienes $overdue recordatorio${overdue == 1 ? '' : 's'} vencido${overdue == 1 ? '' : 's'}',
+            style: AppTypography.bodyLarge.copyWith(
+              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+
+    if (pending > 0) {
+      return Column(
+        children: [
+          Icon(
+            Icons.access_time_filled_rounded,
+            size: 48,
+            color: AppColors.pending,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Tienes $pending pendiente${pending == 1 ? '' : 's'}',
+            style: AppTypography.titleMedium.copyWith(
+              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Revisa tu lista para completarlos',
+            style: AppTypography.bodyMedium.copyWith(
+              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        Icon(
+          Icons.check_circle_rounded,
+          size: 48,
+          color: AppColors.completed,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          '¡Todo listo!',
+          style: AppTypography.titleMedium.copyWith(
+            color: AppColors.completed,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'No tienes recordatorios pendientes',
+          style: AppTypography.bodyRegular.copyWith(
+            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
             },
           ),
         ],
