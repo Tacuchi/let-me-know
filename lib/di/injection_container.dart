@@ -15,6 +15,8 @@ import 'package:let_me_know/services/speech_to_text/speech_to_text_service.dart'
 import 'package:let_me_know/services/speech_to_text/speech_to_text_service_impl.dart';
 import 'package:let_me_know/services/transcription/transcription_analyzer.dart';
 import 'package:let_me_know/services/transcription/local_transcription_analyzer.dart';
+import 'package:let_me_know/services/tts/tts_service.dart';
+import 'package:let_me_know/services/tts/tts_service_impl.dart';
 
 final getIt = GetIt.instance;
 
@@ -31,6 +33,11 @@ Future<void> configureDependencies() async {
   // Para usar LLM: reemplazar LocalTranscriptionAnalyzer por LlmTranscriptionAnalyzer
   getIt.registerLazySingleton<TranscriptionAnalyzer>(
     () => LocalTranscriptionAnalyzer(),
+  );
+
+  // Text-to-Speech Service
+  getIt.registerLazySingleton<TtsService>(
+    () => TtsServiceImpl(),
   );
 
   // Data Sources

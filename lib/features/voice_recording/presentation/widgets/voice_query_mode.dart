@@ -7,6 +7,7 @@ import '../../../../di/injection_container.dart';
 import '../../../reminders/domain/entities/reminder.dart';
 import '../../../../services/speech_to_text/speech_to_text_service.dart';
 import '../../../../services/query/query_service.dart';
+import '../../../../services/tts/tts_service.dart';
 
 class VoiceQueryMode extends StatefulWidget {
   final bool isActive;
@@ -32,6 +33,8 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
 
   late final SpeechToTextService _speechService;
   late final QueryService _queryService;
+  late final TtsService _ttsService;
+  bool _isSpeaking = false;
 
   // Colores distintivos para modo consulta (violeta/morado)
   static const _queryPrimary = Color(0xFF7C4DFF);
@@ -44,7 +47,13 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
     super.initState();
     _speechService = getIt<SpeechToTextService>();
     _queryService = getIt<QueryService>();
+    _ttsService = getIt<TtsService>();
     _initializeSpeech();
+    _initializeTts();
+  }
+
+  Future<void> _initializeTts() async {
+    await _ttsService.initialize();
   }
 
   @override
@@ -94,6 +103,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
   @override
   void dispose() {
     _speechService.stopListening();
+    _ttsService.stop();
     super.dispose();
   }
 
@@ -556,25 +566,52 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
           const SizedBox(height: AppSpacing.xl),
 
           // Botones de acción
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton.icon(
-              onPressed: _resetQuery,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          Row(
+            children: [
+              // Botón de repetir voz
+              Container(
+                width: 56,
+                height: 56,
+                margin: const EdgeInsets.only(right: AppSpacing.sm),
+                child: OutlinedButton(
+                  onPressed: _isSpeaking ? _stopSpeaking : () => _speakResponse(result.response),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: Icon(
+                    _isSpeaking ? Icons.stop_rounded : Icons.volume_up_rounded,
+                    size: 24,
+                  ),
                 ),
-                elevation: 0,
               ),
-              icon: const Icon(Icons.search_rounded, size: 22),
-              label: const Text(
-                'Nueva consulta',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              // Botón de nueva consulta
+              Expanded(
+                child: SizedBox(
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: _resetQuery,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      ),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.search_rounded, size: 22),
+                    label: const Text(
+                      'Nueva consulta',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
           TextButton(
@@ -731,11 +768,30 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
 
   void _resetQuery() {
     HapticFeedback.lightImpact();
+    _ttsService.stop();
     setState(() {
       _transcription = null;
       _queryResult = null;
       _isProcessing = false;
+      _isSpeaking = false;
     });
+  }
+
+  Future<void> _speakResponse(String text) async {
+    setState(() => _isSpeaking = true);
+    await _ttsService.speak(text);
+    // Esperar un momento y verificar si sigue hablando
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted && !_ttsService.isSpeaking) {
+      setState(() => _isSpeaking = false);
+    }
+  }
+
+  Future<void> _stopSpeaking() async {
+    await _ttsService.stop();
+    if (mounted) {
+      setState(() => _isSpeaking = false);
+    }
   }
 
   Future<void> _toggleRecording() async {
@@ -817,6 +873,8 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
           _queryResult = result;
           _isProcessing = false;
         });
+        // Leer la respuesta automáticamente
+        _speakResponse(result.response);
       }
     } catch (e) {
       if (mounted) {

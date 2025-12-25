@@ -41,6 +41,7 @@ dependencies:
   # Audio/Voz
   # record: ^5.1.2              # Grabación de audio
   speech_to_text: ^7.0.0        # Transcripción
+  flutter_tts: ^4.2.0           # Text-to-Speech (respuestas por voz)
 
   # Notificaciones
   flutter_local_notifications: ^18.0.1
