@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../constants/constants.dart';
 
-/// Contador animado con transición suave de números
-/// Ideal para mostrar estadísticas de recordatorios
 class AnimatedCounter extends StatelessWidget {
   final int value;
   final String label;

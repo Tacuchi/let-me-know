@@ -1,5 +1,3 @@
-/// Widgets reutilizables de la aplicación
-/// Incluye componentes con animaciones y micro-interacciones (tendencia 2025)
 library;
 
 export 'animated_mic_button.dart';

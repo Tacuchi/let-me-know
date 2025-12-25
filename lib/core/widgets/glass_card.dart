@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 
 import '../constants/constants.dart';
 
-/// Tarjeta con efecto glassmorphism (tendencia 2025)
-/// Proporciona un diseño moderno y elegante
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -70,7 +68,6 @@ class GlassCard extends StatelessWidget {
   }
 }
 
-/// Tarjeta con gradiente suave (tendencia 2025)
 class GradientCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -121,7 +118,6 @@ class GradientCard extends StatelessWidget {
   }
 }
 
-/// Tarjeta elevada con animación de hover/press
 class AnimatedCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;

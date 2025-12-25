@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Transición con fade y slide para entrada de widgets
-/// Crea animaciones fluidas y elegantes (tendencia 2025)
 class FadeSlideTransition extends StatefulWidget {
   final Widget child;
   final Duration duration;

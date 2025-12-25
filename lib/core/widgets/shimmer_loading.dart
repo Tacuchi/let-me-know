@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../constants/constants.dart';
 
-/// Efecto shimmer para estados de carga
-/// Proporciona feedback visual mientras se cargan datos
 class ShimmerLoading extends StatefulWidget {
   final Widget child;
   final bool isLoading;
