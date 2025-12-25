@@ -17,10 +17,20 @@ import 'package:let_me_know/services/transcription/transcription_analyzer.dart';
 import 'package:let_me_know/services/transcription/local_transcription_analyzer.dart';
 import 'package:let_me_know/services/tts/tts_service.dart';
 import 'package:let_me_know/services/tts/tts_service_impl.dart';
+import 'package:let_me_know/core/services/feedback_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final getIt = GetIt.instance;
 
 Future<void> configureDependencies() async {
+  // Core / External
+  final sharedPreferences = await SharedPreferences.getInstance();
+  getIt.registerSingleton<SharedPreferences>(sharedPreferences);
+
+  getIt.registerLazySingleton<FeedbackService>(
+    () => FeedbackService(getIt()),
+  );
+
   // Services
   getIt.registerLazySingleton<NotificationService>(
     () => NotificationServiceImpl(),
