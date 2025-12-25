@@ -1,3 +1,5 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 import '../../features/reminders/domain/entities/reminder.dart';
 
 abstract class NotificationService {
@@ -7,4 +9,7 @@ abstract class NotificationService {
   Future<void> cancelAllNotifications();
   Future<bool> requestPermissions();
   Future<bool> hasPermissions();
+  
+  /// Obtiene detalles si la app fue lanzada desde una notificación
+  Future<NotificationAppLaunchDetails?> getAppLaunchDetails();
 }

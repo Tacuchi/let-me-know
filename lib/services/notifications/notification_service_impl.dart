@@ -1,13 +1,26 @@
 import 'dart:io';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 import '../../features/reminders/domain/entities/reminder.dart';
 import '../../features/reminders/domain/entities/reminder_importance.dart';
 import '../../features/reminders/domain/entities/reminder_type.dart';
+import '../../router/app_router.dart';
+import '../../router/app_routes.dart';
 import 'notification_service.dart';
+
+// Canales Android
+const String channelHighImportance = 'high_importance_reminders';
+const String channelDefault = 'default_reminders';
+
+/// Handler para notificaciones en background (corre en isolate separado)
+@pragma('vm:entry-point')
+void notificationBackgroundHandler(NotificationResponse response) async {
+  // Sin acciones - el usuario interactúa en la app
+}
 
 class NotificationServiceImpl implements NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
@@ -19,7 +32,7 @@ class NotificationServiceImpl implements NotificationService {
   Future<bool> initialize() async {
     if (_initialized) return true;
 
-    tz.initializeTimeZones();
+    tz_data.initializeTimeZones();
 
     try {
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
@@ -34,28 +47,78 @@ class NotificationServiceImpl implements NotificationService {
     }
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    // iOS settings (sin acciones - interacción en la app)
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
 
-    const settings = InitializationSettings(
+    final settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
 
     final result = await _plugin.initialize(
       settings,
-      onDidReceiveNotificationResponse: _onNotificationTap,
+      onDidReceiveNotificationResponse: _onNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse: notificationBackgroundHandler,
     );
+
+    // Crear canales Android
+    await _createAndroidChannels();
 
     _initialized = result ?? false;
     return _initialized;
   }
 
-  void _onNotificationTap(NotificationResponse response) {
-    // TODO: Navigate to reminder detail page
+  Future<void> _createAndroidChannels() async {
+    if (!Platform.isAndroid) return;
+
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+
+    // Canal de alta importancia (medicamentos, citas)
+    await android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        channelHighImportance,
+        'Recordatorios Importantes',
+        description: 'Medicamentos y citas médicas',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        enableLights: true,
+      ),
+    );
+
+    // Canal por defecto
+    await android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        channelDefault,
+        'Recordatorios',
+        description: 'Recordatorios generales',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      ),
+    );
+  }
+
+  void _onNotificationResponse(NotificationResponse response) {
+    final reminderId = response.payload;
+
+    // Si es tap en la notificación, abrir pantalla de alarma
+    if (reminderId != null && reminderId.isNotEmpty) {
+      _navigateToAlarm(reminderId);
+    }
+  }
+
+  void _navigateToAlarm(String reminderId) {
+    appRouter.pushNamed(
+      AppRoutes.alarmName,
+      pathParameters: {'id': reminderId},
+    );
   }
 
   @override
@@ -86,9 +149,7 @@ class NotificationServiceImpl implements NotificationService {
     if (Platform.isAndroid) {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      final granted =
-          await android?.areNotificationsEnabled() ?? false;
-      return granted;
+      return await android?.areNotificationsEnabled() ?? false;
     }
 
     return _initialized;
@@ -103,21 +164,36 @@ class NotificationServiceImpl implements NotificationService {
     final notificationId = reminder.notificationId ??
         reminder.id.hashCode.abs() % 2147483647;
 
+    // Seleccionar canal según importancia
+    final channelId = _isHighImportance(reminder)
+        ? channelHighImportance
+        : channelDefault;
+
+    final isHighPriority = _isHighImportance(reminder);
+
+    // Android: notificación simple, interacción en la app
     final androidDetails = AndroidNotificationDetails(
-      'reminders_channel',
-      'Recordatorios',
+      channelId,
+      isHighPriority ? 'Recordatorios Importantes' : 'Recordatorios',
       channelDescription: 'Notificaciones de recordatorios',
       importance: _getImportance(reminder),
       priority: _getPriority(reminder),
       icon: '@mipmap/ic_launcher',
       enableVibration: true,
       playSound: true,
+      fullScreenIntent: isHighPriority,
+      category: isHighPriority ? AndroidNotificationCategory.alarm : null,
+      visibility: NotificationVisibility.public,
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    // iOS: notificación simple
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      interruptionLevel: isHighPriority 
+          ? InterruptionLevel.timeSensitive 
+          : InterruptionLevel.active,
     );
 
     final details = NotificationDetails(
@@ -132,7 +208,7 @@ class NotificationServiceImpl implements NotificationService {
 
     await _plugin.zonedSchedule(
       notificationId,
-      '${_getIcon(reminder.type)} ${reminder.title}',
+      '${reminder.type.emoji} ${reminder.title}',
       reminder.description.isNotEmpty
           ? reminder.description
           : 'Tienes un recordatorio programado',
@@ -155,33 +231,44 @@ class NotificationServiceImpl implements NotificationService {
     await _plugin.cancelAll();
   }
 
+  @override
+  Future<NotificationAppLaunchDetails?> getAppLaunchDetails() async {
+    return await _plugin.getNotificationAppLaunchDetails();
+  }
+
+  bool _isHighImportance(Reminder reminder) {
+    return reminder.importance == ReminderImportance.high ||
+        reminder.type == ReminderType.medication ||
+        reminder.type == ReminderType.appointment;
+  }
+
   Importance _getImportance(Reminder reminder) {
+    if (_isHighImportance(reminder)) return Importance.max;
+    
     switch (reminder.importance) {
       case ReminderImportance.high:
-        return Importance.high;
+        return Importance.max;
       case ReminderImportance.medium:
-        return Importance.defaultImportance;
+        return Importance.high;
       case ReminderImportance.low:
-        return Importance.low;
+        return Importance.defaultImportance;
       case ReminderImportance.info:
         return Importance.low;
     }
   }
 
   Priority _getPriority(Reminder reminder) {
+    if (_isHighImportance(reminder)) return Priority.max;
+    
     switch (reminder.importance) {
       case ReminderImportance.high:
-        return Priority.high;
+        return Priority.max;
       case ReminderImportance.medium:
-        return Priority.defaultPriority;
+        return Priority.high;
       case ReminderImportance.low:
-        return Priority.low;
+        return Priority.defaultPriority;
       case ReminderImportance.info:
         return Priority.low;
     }
-  }
-
-  String _getIcon(ReminderType type) {
-    return type.emoji;
   }
 }

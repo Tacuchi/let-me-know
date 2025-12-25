@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants/constants.dart';
 import '../di/injection_container.dart';
+import '../features/alarm/presentation/pages/alarm_screen_page.dart';
 import '../features/history/application/cubit/history_cubit.dart';
 import '../features/home/presentation/pages/home_page.dart';
+import '../features/reminders/application/cubit/reminder_detail_cubit.dart';
+import '../features/reminders/presentation/pages/reminder_detail_page.dart';
 import '../features/reminders/presentation/pages/reminder_list_page.dart';
 import '../features/history/presentation/pages/history_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
@@ -69,6 +72,27 @@ final appRouter = GoRouter(
           ],
         ),
       ],
+    ),
+    // Ruta: Detalle de recordatorio
+    GoRoute(
+      path: AppRoutes.reminderDetail,
+      name: AppRoutes.reminderDetailName,
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return BlocProvider(
+          create: (_) => getIt<ReminderDetailCubit>()..load(id),
+          child: const ReminderDetailPage(),
+        );
+      },
+    ),
+    // Ruta: Pantalla de alarma fullscreen
+    GoRoute(
+      path: AppRoutes.alarm,
+      name: AppRoutes.alarmName,
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return AlarmScreenPage(reminderId: id);
+      },
     ),
     // Ruta modal: Grabación de voz con transición mejorada
     GoRoute(
