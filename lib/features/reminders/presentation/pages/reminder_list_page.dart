@@ -114,8 +114,7 @@ class _ReminderListPageState extends State<ReminderListPage>
               opacity: _fadeAnimation,
               child: Column(
                 children: [
-                  // Filtros eliminados para simplificar UI
-                  // _buildFilters(isDark, filter),
+                  _buildFilters(isDark, filter),
 
                   if (filter == ReminderListFilter.today)
                     _buildDaySummary(isDark, state),
@@ -133,7 +132,7 @@ class _ReminderListPageState extends State<ReminderListPage>
                       ),
                       ReminderListLoaded() =>
                         filtered.isEmpty
-                            ? _buildEmptyState(isDark)
+                            ? _buildEmptyState(isDark, filter: filter)
                             : _buildReminderList(isDark, filtered),
                     },
                   ),
@@ -146,7 +145,65 @@ class _ReminderListPageState extends State<ReminderListPage>
     );
   }
 
-  // Widget _buildFilters eliminado
+  Widget _buildFilters(bool isDark, ReminderListFilter currentFilter) {
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    final selectedColor = isDark 
+        ? AppColors.accentPrimaryDark 
+        : AppColors.accentPrimary;
+    final unselectedColor = isDark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondary;
+
+    // Filtros disponibles (excluye 'notes' porque tiene su propio tab)
+    const filters = [
+      ReminderListFilter.all,
+      ReminderListFilter.pending,
+      ReminderListFilter.today,
+      ReminderListFilter.completed,
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screenPadding,
+        vertical: AppSpacing.sm,
+      ),
+      child: Row(
+        children: filters.map((filter) {
+          final isSelected = filter == currentFilter;
+          return Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: FilterChip(
+              label: Text(filter.label),
+              selected: isSelected,
+              onSelected: (_) {
+                _feedbackService.light();
+                context.read<ReminderListCubit>().setFilter(filter);
+              },
+              backgroundColor: bgColor,
+              selectedColor: selectedColor.withValues(alpha: 0.2),
+              labelStyle: TextStyle(
+                color: isSelected ? selectedColor : unselectedColor,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+              side: BorderSide(
+                color: isSelected ? selectedColor : Colors.transparent,
+                width: 1.5,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+              ),
+              showCheckmark: false,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
 
   Widget _buildDaySummary(bool isDark, ReminderListState state) {
@@ -270,7 +327,7 @@ class _ReminderListPageState extends State<ReminderListPage>
     );
   }
 
-  Widget _buildEmptyState(bool isDark) {
+  Widget _buildEmptyState(bool isDark, {ReminderListFilter filter = ReminderListFilter.all}) {
     final textColor = isDark
         ? AppColors.textSecondaryDark
         : AppColors.textSecondary;
@@ -281,13 +338,36 @@ class _ReminderListPageState extends State<ReminderListPage>
         ? AppColors.accentPrimaryDark
         : AppColors.accentPrimary;
 
+    // Mensajes dinámicos según filtro
+    final (title, subtitle, icon) = switch (filter) {
+      ReminderListFilter.completed => (
+        'Sin completados',
+        'Cuando marques recordatorios\ncomo completados, aparecerán aquí',
+        Icons.done_all_rounded,
+      ),
+      ReminderListFilter.pending => (
+        'Sin pendientes',
+        '¡Genial! No tienes recordatorios\npendientes por atender',
+        Icons.check_circle_outline_rounded,
+      ),
+      ReminderListFilter.today => (
+        'Sin recordatorios para hoy',
+        'No tienes recordatorios\nprogramados para hoy',
+        Icons.today_rounded,
+      ),
+      _ => (
+        'No tienes recordatorios',
+        'Toca el micrófono para crear\ntu primer recordatorio',
+        Icons.inbox_rounded,
+      ),
+    };
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Ícono animado
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.8, end: 1.0),
               duration: const Duration(milliseconds: 600),
@@ -302,7 +382,7 @@ class _ReminderListPageState extends State<ReminderListPage>
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.inbox_rounded,
+                      icon,
                       size: 56,
                       color: primaryColor.withValues(alpha: 0.7),
                     ),
@@ -312,29 +392,30 @@ class _ReminderListPageState extends State<ReminderListPage>
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'No tienes recordatorios',
+              title,
               style: AppTypography.titleSmall.copyWith(color: textColor),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Toca el micrófono para crear\ntu primer recordatorio',
+              subtitle,
               style: AppTypography.bodyMedium.copyWith(color: helperColor),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppSpacing.xl),
-            // Hint visual
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.swipe_rounded, size: 20, color: helperColor),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  'Desliza para gestionar',
-                  style: AppTypography.helper.copyWith(color: helperColor),
-                ),
-              ],
-            ),
+            if (filter == ReminderListFilter.all) ...[
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.swipe_rounded, size: 20, color: helperColor),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Desliza para gestionar',
+                    style: AppTypography.helper.copyWith(color: helperColor),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
