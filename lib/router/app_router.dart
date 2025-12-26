@@ -6,12 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../core/constants/constants.dart';
 import '../di/injection_container.dart';
 import '../features/alarm/presentation/pages/alarm_screen_page.dart';
-import '../features/history/application/cubit/history_cubit.dart';
+import '../features/notes/application/cubit/notes_cubit.dart';
 import '../features/home/presentation/pages/home_page.dart';
 import '../features/reminders/application/cubit/reminder_detail_cubit.dart';
 import '../features/reminders/presentation/pages/reminder_detail_page.dart';
 import '../features/reminders/presentation/pages/reminder_list_page.dart';
-import '../features/history/presentation/pages/history_page.dart';
+import '../features/notes/presentation/pages/notes_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/voice_recording/presentation/pages/voice_recording_page.dart';
 import 'app_routes.dart';
@@ -48,15 +48,15 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Rama: Historial
+        // Rama: Notas
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: AppRoutes.history,
-              name: AppRoutes.historyName,
+              path: AppRoutes.notes,
+              name: AppRoutes.notesName,
               builder: (context, state) => BlocProvider(
-                create: (_) => getIt<HistoryCubit>()..start(),
-                child: const HistoryPage(),
+                create: (_) => getIt<NotesCubit>()..start(),
+                child: const NotesPage(),
               ),
             ),
           ],
@@ -284,13 +284,13 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
               ),
               // Espacio para el FAB
               const SizedBox(width: 80),
-              // Historial
+              // Notas
               Expanded(
                 child: _NavItem(
                   index: 2,
-                  icon: Icons.history_outlined,
-                  selectedIcon: Icons.history_rounded,
-                  label: 'Historial',
+                  icon: Icons.sticky_note_2_outlined,
+                  selectedIcon: Icons.sticky_note_2_rounded,
+                  label: 'Notas',
                   isSelected: widget.navigationShell.currentIndex == 2,
                   onTap: () => _navigateTo(2),
                   isDark: isDark,
