@@ -34,12 +34,40 @@ class Reminders extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Reminders])
+/// Grupos de recordatorios (ej: tratamientos médicos).
+@DataClassName('ReminderGroupRow')
+class ReminderGroups extends Table {
+  TextColumn get id => text()();
+  TextColumn get label => text()();
+  TextColumn get type => text()(); // medication, treatment, etc.
+  IntColumn get itemCount => integer().withDefault(const Constant(0))();
+  IntColumn get createdAtMs => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Historial de acciones (completados, eliminados).
+@DataClassName('ActionHistoryRow')
+class ActionHistory extends Table {
+  TextColumn get id => text()();
+  TextColumn get action => text()(); // created, completed, deleted
+  TextColumn get reminderId => text()();
+  TextColumn get reminderTitle => text()();
+  TextColumn get groupId => text().nullable()();
+  TextColumn get groupLabel => text().nullable()();
+  IntColumn get actionAtMs => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Reminders, ReminderGroups, ActionHistory])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -50,8 +78,25 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await _migrateFromSqfliteV1ToDriftV2(migrator);
       }
+      if (from < 3) {
+        await _migrateToV3(migrator);
+      }
     },
   );
+
+  Future<void> _migrateToV3(Migrator migrator) async {
+    await migrator.createTable(reminderGroups);
+    await migrator.createTable(actionHistory);
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_reminder_groups_created_at ON reminder_groups (created_at_ms);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_action_history_action_at ON action_history (action_at_ms);',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_reminders_group_id ON reminders (recurrence_group_id);',
+    );
+  }
 
   Future<void> _migrateFromSqfliteV1ToDriftV2(Migrator migrator) async {
     final hasOld = await customSelect(

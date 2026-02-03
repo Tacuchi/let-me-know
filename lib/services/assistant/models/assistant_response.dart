@@ -5,9 +5,11 @@ import '../../../features/reminders/domain/entities/reminder_type.dart';
 enum AssistantAction {
   createReminder,
   createNote,
+  createBatch,
   updateReminder,
   completeReminder,
   deleteReminder,
+  deleteGroup,
   queryResponse,
   clarificationNeeded,
   noAction,
@@ -54,6 +56,14 @@ class AssistantResponse {
   DeleteReminderData? get deleteReminderData =>
       action == AssistantAction.deleteReminder ? data as DeleteReminderData : null;
 
+  /// Datos tipados para CREATE_BATCH.
+  BatchCreateData? get batchCreateData =>
+      action == AssistantAction.createBatch ? data as BatchCreateData : null;
+
+  /// Datos tipados para DELETE_GROUP.
+  DeleteGroupData? get deleteGroupData =>
+      action == AssistantAction.deleteGroup ? data as DeleteGroupData : null;
+
   /// Datos tipados para QUERY_RESPONSE.
   QueryResponseData? get queryResponseData =>
       action == AssistantAction.queryResponse ? data as QueryResponseData : null;
@@ -70,9 +80,11 @@ class AssistantResponse {
     return switch (action) {
       'CREATE_REMINDER' => AssistantAction.createReminder,
       'CREATE_NOTE' => AssistantAction.createNote,
+      'CREATE_BATCH' => AssistantAction.createBatch,
       'UPDATE_REMINDER' => AssistantAction.updateReminder,
       'COMPLETE_REMINDER' => AssistantAction.completeReminder,
       'DELETE_REMINDER' => AssistantAction.deleteReminder,
+      'DELETE_GROUP' => AssistantAction.deleteGroup,
       'QUERY_RESPONSE' => AssistantAction.queryResponse,
       'CLARIFICATION_NEEDED' => AssistantAction.clarificationNeeded,
       'NO_ACTION' => AssistantAction.noAction,
@@ -87,9 +99,11 @@ class AssistantResponse {
     return switch (action) {
       AssistantAction.createReminder => CreateReminderData.fromJson(map),
       AssistantAction.createNote => CreateNoteData.fromJson(map),
+      AssistantAction.createBatch => BatchCreateData.fromJson(map),
       AssistantAction.updateReminder => UpdateReminderData.fromJson(map),
       AssistantAction.completeReminder => CompleteReminderData.fromJson(map),
       AssistantAction.deleteReminder => DeleteReminderData.fromJson(map),
+      AssistantAction.deleteGroup => DeleteGroupData.fromJson(map),
       AssistantAction.queryResponse => QueryResponseData.fromJson(map),
       AssistantAction.clarificationNeeded => ClarificationData.fromJson(map),
       AssistantAction.noAction => NoActionData.fromJson(map),
@@ -194,6 +208,43 @@ class DeleteReminderData {
   factory DeleteReminderData.fromJson(Map<String, dynamic> json) {
     return DeleteReminderData(
       reminderId: json['reminderId'] as String,
+    );
+  }
+}
+
+/// Datos para crear múltiples recordatorios (batch/receta).
+class BatchCreateData {
+  final String groupId;
+  final String groupLabel;
+  final List<CreateReminderData> items;
+
+  const BatchCreateData({
+    required this.groupId,
+    required this.groupLabel,
+    required this.items,
+  });
+
+  factory BatchCreateData.fromJson(Map<String, dynamic> json) {
+    final itemsList = (json['items'] as List<dynamic>?) ?? [];
+    return BatchCreateData(
+      groupId: json['groupId'] as String? ?? '',
+      groupLabel: json['groupLabel'] as String? ?? 'Tratamiento',
+      items: itemsList
+          .map((e) => CreateReminderData.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+/// Datos para eliminar un grupo completo.
+class DeleteGroupData {
+  final String groupId;
+
+  const DeleteGroupData({required this.groupId});
+
+  factory DeleteGroupData.fromJson(Map<String, dynamic> json) {
+    return DeleteGroupData(
+      groupId: json['groupId'] as String,
     );
   }
 }

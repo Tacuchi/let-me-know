@@ -123,16 +123,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: _buildGreeting(isDark),
                   ),
                 ),
+                // Banner de alertas inminentes (próximas 2 horas)
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screenPadding,
-                      AppSpacing.lg,
-                      AppSpacing.screenPadding,
-                      0,
-                    ),
-                    child: _buildSummaryCard(isDark),
-                  ),
+                  child: _buildImminentAlertsBanner(isDark),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -337,211 +330,145 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Toca el micrófono para crear un recordatorio',
+          'Toca el micrófono para hablar conmigo',
           style: AppTypography.bodyMedium.copyWith(color: secondaryTextColor),
         ),
       ],
     );
   }
 
-  Widget _buildSummaryCard(bool isDark) {
-    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
-    final textColor = isDark
-        ? AppColors.textPrimaryDark
-        : AppColors.textPrimary;
-    final primaryColor = isDark
-        ? AppColors.accentPrimaryDark
-        : AppColors.accentPrimary;
+  /// Banner de alertas inminentes (próximas 2 horas).
+  Widget _buildImminentAlertsBanner(bool isDark) {
+    final hasProvider = context
+            .findAncestorWidgetOfExactType<BlocProvider<ReminderSummaryCubit>>() !=
+        null;
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      primaryColor.withValues(alpha: 0.2),
-                      primaryColor.withValues(alpha: 0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                ),
-                child: Icon(
-                  Icons.wb_sunny_rounded,
-                  color: primaryColor,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Resumen de hoy',
-                style: AppTypography.titleSmall.copyWith(color: textColor),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Builder(
-            builder: (context) {
-              final hasProvider =
-                  context
-                      .findAncestorWidgetOfExactType<
-                        BlocProvider<ReminderSummaryCubit>
-                      >() !=
-                  null;
+    if (!hasProvider) return const SizedBox.shrink();
 
-              if (!hasProvider) {
-                // Modo degradado (tests / preview sin DI).
-                return Row(
+    return BlocBuilder<ReminderSummaryCubit, ReminderSummaryState>(
+      builder: (context, state) {
+        if (state is! ReminderSummaryLoaded) return const SizedBox.shrink();
+        if (state.imminentAlerts.isEmpty) return const SizedBox.shrink();
+
+        final alerts = state.imminentAlerts;
+        final warningColor = AppColors.warning;
+        final textColor =
+            isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenPadding,
+            AppSpacing.lg,
+            AppSpacing.screenPadding,
+            0,
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: warningColor.withValues(alpha: isDark ? 0.2 : 0.15),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              border: Border.all(
+                color: warningColor.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Expanded(
-                      child: AnimatedCounter(
-                        value: 0,
-                        label: 'Pendientes',
-                        color: AppColors.pending,
-                      ),
+                    Icon(
+                      Icons.notifications_active_rounded,
+                      size: 22,
+                      color: warningColor,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: AnimatedCounter(
-                        value: 0,
-                        label: 'Vencidos',
-                        color: AppColors.overdue,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AnimatedCounter(
-                        value: 0,
-                        label: 'Completados',
-                        color: AppColors.completed,
+                      child: Text(
+                        alerts.length == 1
+                            ? '¡Tienes un recordatorio pronto!'
+                            : '¡Tienes ${alerts.length} recordatorios pronto!',
+                        style: AppTypography.bodyLarge.copyWith(
+                          color: textColor,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
-                );
-              }
-
-              return BlocBuilder<ReminderSummaryCubit, ReminderSummaryState>(
-                builder: (context, state) {
-                  final pending = state is ReminderSummaryLoaded ? state.pending : 0;
-                  final overdue = state is ReminderSummaryLoaded ? state.overdue : 0;
-                  final completed = state is ReminderSummaryLoaded ? state.completed : 0;
-
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.md,
-                      horizontal: AppSpacing.sm,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...alerts.take(3).map((alert) {
+                  final timeStr = _formatAlertTime(alert.scheduledAt!);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        context.push('/reminders/${alert.id}');
+                      },
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 16,
+                            color: warningColor,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              '${alert.title} • $timeStr',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: textColor.withValues(alpha: 0.85),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: textColor.withValues(alpha: 0.5),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: _buildSimpleSummaryText(pending, overdue, completed, isDark),
                   );
-                },
-              );
-            },
+                }),
+                if (alerts.length > 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: Text(
+                      'y ${alerts.length - 3} más...',
+                      style: AppTypography.helper.copyWith(
+                        color: warningColor,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildSimpleSummaryText(
-    int pending,
-    int overdue,
-    int completed,
-    bool isDark,
-  ) {
-    if (overdue > 0) {
-      return Column(
-        children: [
-          Icon(Icons.warning_amber_rounded, size: 48, color: AppColors.overdue),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            '¡Atención!',
-            style: AppTypography.titleMedium.copyWith(
-              color: AppColors.overdue,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Tienes $overdue recordatorio${overdue == 1 ? '' : 's'} vencido${overdue == 1 ? '' : 's'}',
-            style: AppTypography.bodyLarge.copyWith(
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      );
-    }
+  String _formatAlertTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = dt.difference(now);
 
-    if (pending > 0) {
-      return Column(
-        children: [
-          Icon(
-            Icons.access_time_filled_rounded,
-            size: 48,
-            color: AppColors.pending,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Tienes $pending pendiente${pending == 1 ? '' : 's'}',
-            style: AppTypography.titleMedium.copyWith(
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Revisa tu lista para completarlos',
-            style: AppTypography.bodyMedium.copyWith(
-              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      );
+    if (diff.inMinutes < 1) {
+      return '¡Ahora!';
+    } else if (diff.inMinutes < 60) {
+      return 'en ${diff.inMinutes} min';
+    } else {
+      final hour = dt.hour;
+      final minute = dt.minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      return '$displayHour:$minute $period';
     }
-
-    return Column(
-      children: [
-        Icon(
-          Icons.check_circle_rounded,
-          size: 48,
-          color: AppColors.completed,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          '¡Todo listo!',
-          style: AppTypography.titleMedium.copyWith(
-            color: AppColors.completed,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'No tienes recordatorios pendientes',
-          style: AppTypography.bodyMedium.copyWith(
-            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
   }
 
   Widget _buildUpcomingSection(bool isDark) {

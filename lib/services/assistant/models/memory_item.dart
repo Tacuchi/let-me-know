@@ -14,6 +14,8 @@ class MemoryItem {
   final String? object;
   final String? location;
   final String? person;
+  final String? groupId;
+  final String? groupLabel;
 
   const MemoryItem({
     required this.id,
@@ -25,10 +27,13 @@ class MemoryItem {
     this.object,
     this.location,
     this.person,
+    this.groupId,
+    this.groupLabel,
   });
 
   /// Crea un MemoryItem desde un Reminder del dominio.
-  factory MemoryItem.fromReminder(Reminder reminder) {
+  /// [groupLabel] se pasa opcionalmente si se conoce (obtenido del grupo).
+  factory MemoryItem.fromReminder(Reminder reminder, {String? groupLabel}) {
     return MemoryItem(
       id: reminder.id,
       title: reminder.title,
@@ -39,6 +44,8 @@ class MemoryItem {
       object: reminder.object,
       location: reminder.location,
       person: _extractPerson(reminder),
+      groupId: reminder.recurrenceGroupId,
+      groupLabel: groupLabel,
     );
   }
 
@@ -53,6 +60,8 @@ class MemoryItem {
       if (object != null) 'object': object,
       if (location != null) 'location': location,
       if (person != null) 'person': person,
+      if (groupId != null) 'groupId': groupId,
+      if (groupLabel != null) 'groupLabel': groupLabel,
     };
   }
 

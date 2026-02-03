@@ -38,12 +38,25 @@ class ReminderSummaryCubit extends Cubit<ReminderSummaryState> {
             .where((r) => r.status == ReminderStatus.completed)
             .length;
 
+        // Filtrar alertas inminentes (próximas 2 horas)
+        final now = DateTime.now();
+        final twoHoursFromNow = now.add(const Duration(hours: 2));
+        final imminentAlerts = data.today
+            .where((r) =>
+                r.status == ReminderStatus.pending &&
+                r.scheduledAt != null &&
+                r.scheduledAt!.isAfter(now) &&
+                r.scheduledAt!.isBefore(twoHoursFromNow))
+            .toList()
+          ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
+
         emit(
           ReminderSummaryLoaded(
             pending: pending,
             overdue: overdue,
             completed: completed,
             upcoming: data.upcoming,
+            imminentAlerts: imminentAlerts,
           ),
         );
       },

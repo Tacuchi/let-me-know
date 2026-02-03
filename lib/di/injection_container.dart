@@ -6,6 +6,10 @@ import 'package:let_me_know/features/notes/application/cubit/notes_cubit.dart';
 import 'package:let_me_know/features/reminders/application/cubit/reminder_detail_cubit.dart';
 import 'package:let_me_know/features/reminders/application/cubit/reminder_list_cubit.dart';
 import 'package:let_me_know/features/reminders/application/cubit/reminder_summary_cubit.dart';
+import 'package:let_me_know/features/groups/domain/repositories/action_history_repository.dart';
+import 'package:let_me_know/features/groups/domain/repositories/group_repository.dart';
+import 'package:let_me_know/features/groups/infrastructure/repositories/action_history_repository_drift_impl.dart';
+import 'package:let_me_know/features/groups/infrastructure/repositories/group_repository_drift_impl.dart';
 import 'package:let_me_know/features/reminders/domain/repositories/reminder_repository.dart';
 import 'package:let_me_know/features/reminders/infrastructure/repositories/reminder_repository_drift_impl.dart';
 import 'package:let_me_know/services/assistant/assistant_api_client.dart';
@@ -61,8 +65,14 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<ReminderRepository>(
     () => ReminderRepositoryDriftImpl(getIt()),
   );
+  getIt.registerLazySingleton<GroupRepository>(
+    () => GroupRepositoryDriftImpl(getIt()),
+  );
+  getIt.registerLazySingleton<ActionHistoryRepository>(
+    () => ActionHistoryRepositoryDriftImpl(getIt()),
+  );
 
-  // Voice Assistant (Backend LLM) - depende de ReminderRepository
+  // Voice Assistant (Backend LLM) - depende de repositorios
   getIt.registerLazySingleton<AssistantApiClient>(
     () => AssistantApiClient(),
   );
@@ -70,6 +80,7 @@ Future<void> configureDependencies() async {
     () => VoiceAssistantServiceImpl(
       getIt<AssistantApiClient>(),
       getIt<ReminderRepository>(),
+      getIt<GroupRepository>(),
     ),
   );
 

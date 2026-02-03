@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../core/services/feedback_service.dart';
+import '../../../groups/domain/entities/reminder_group.dart';
+import '../../../groups/domain/repositories/group_repository.dart';
 import '../../application/cubit/reminder_list_cubit.dart';
 import '../../application/cubit/reminder_list_state.dart';
 import '../../domain/entities/reminder.dart';
@@ -28,6 +30,8 @@ class _ReminderListPageState extends State<ReminderListPage>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late final FeedbackService _feedbackService;
+  late final GroupRepository _groupRepository;
+  Map<String, ReminderGroup> _groupsCache = {};
 
   @override
   void initState() {
@@ -42,6 +46,17 @@ class _ReminderListPageState extends State<ReminderListPage>
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
     _feedbackService = getIt<FeedbackService>();
+    _groupRepository = getIt<GroupRepository>();
+    _loadGroups();
+  }
+
+  Future<void> _loadGroups() async {
+    final groups = await _groupRepository.getAll();
+    if (mounted) {
+      setState(() {
+        _groupsCache = {for (final g in groups) g.id: g};
+      });
+    }
   }
 
   @override
@@ -299,13 +314,35 @@ class _ReminderListPageState extends State<ReminderListPage>
   }
 
   Widget _buildReminderList(bool isDark, List<Reminder> reminders) {
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.screenPadding),
-      itemCount: reminders.length,
-      itemBuilder: (context, index) {
-        final reminder = reminders[index];
-        return Padding(
+    // Separar recordatorios por grupo
+    final grouped = <String, List<Reminder>>{};
+    final ungrouped = <Reminder>[];
+
+    for (final reminder in reminders) {
+      if (reminder.recurrenceGroupId != null) {
+        grouped.putIfAbsent(reminder.recurrenceGroupId!, () => []).add(reminder);
+      } else {
+        ungrouped.add(reminder);
+      }
+    }
+
+    // Construir lista de widgets
+    final items = <Widget>[];
+
+    // Primero los grupos
+    for (final entry in grouped.entries) {
+      final groupId = entry.key;
+      final groupReminders = entry.value;
+      final group = _groupsCache[groupId];
+      final label = group?.label ?? 'Tratamiento';
+
+      items.add(_buildGroupSection(isDark, groupId, label, groupReminders));
+    }
+
+    // Luego los recordatorios sin grupo
+    for (final reminder in ungrouped) {
+      items.add(
+        Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: ReminderCard(
             reminder: reminder,
@@ -322,9 +359,212 @@ class _ReminderListPageState extends State<ReminderListPage>
               context.read<ReminderListCubit>().delete(reminder.id);
             },
           ),
+        ),
+      );
+    }
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      children: items,
+    );
+  }
+
+  Widget _buildGroupSection(
+    bool isDark,
+    String groupId,
+    String label,
+    List<Reminder> reminders,
+  ) {
+    final primaryColor =
+        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final secondaryColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+
+    // Ordenar por fecha
+    reminders.sort((a, b) {
+      if (a.scheduledAt == null) return 1;
+      if (b.scheduledAt == null) return -1;
+      return a.scheduledAt!.compareTo(b.scheduledAt!);
+    });
+
+    final pendingCount =
+        reminders.where((r) => r.status == ReminderStatus.pending).length;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(
+          color: primaryColor.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            0,
+            AppSpacing.sm,
+            AppSpacing.sm,
+          ),
+          leading: Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            child: Icon(
+              Icons.medication_rounded,
+              color: primaryColor,
+              size: 22,
+            ),
+          ),
+          title: GestureDetector(
+            onTap: () => _showEditGroupLabelSheet(groupId, label),
+            child: Text(
+              label,
+              style: AppTypography.titleSmall.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          subtitle: Text(
+            '$pendingCount de ${reminders.length} pendientes',
+            style: AppTypography.helper.copyWith(color: secondaryColor),
+          ),
+          children: reminders.map((reminder) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: ReminderCard(
+                reminder: reminder,
+                showProgress: false,
+                onTap: () {
+                  _feedbackService.light();
+                  context.push('/reminders/${reminder.id}');
+                },
+                onComplete: () {
+                  _feedbackService.success();
+                  context.read<ReminderListCubit>().markAsCompleted(reminder.id);
+                },
+                onDelete: () {
+                  _feedbackService.medium();
+                  context.read<ReminderListCubit>().delete(reminder.id);
+                },
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showEditGroupLabelSheet(String groupId, String currentLabel) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final controller = TextEditingController(text: currentLabel);
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final hintColor = isDark ? AppColors.textHelperDark : AppColors.textHelper;
+    final primaryColor = isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: bgColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            top: AppSpacing.lg,
+            bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.dividerDark : AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Editar nombre del grupo',
+                style: AppTypography.titleSmall.copyWith(color: textColor),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Nombre del tratamiento',
+                  hintStyle: TextStyle(color: hintColor),
+                  filled: true,
+                  fillColor: isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: TextStyle(color: textColor),
+                onSubmitted: (value) {
+                  Navigator.pop(context);
+                  _saveGroupLabel(groupId, value.trim(), currentLabel);
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _saveGroupLabel(groupId, controller.text.trim(), currentLabel);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    ),
+                  ),
+                  child: const Text('Guardar'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
         );
       },
     );
+  }
+
+  Future<void> _saveGroupLabel(String groupId, String newLabel, String currentLabel) async {
+    if (newLabel.isNotEmpty && newLabel != currentLabel) {
+      await _groupRepository.updateLabel(groupId, newLabel);
+      await _loadGroups();
+      _feedbackService.light();
+    }
   }
 
   Widget _buildEmptyState(bool isDark, {ReminderListFilter filter = ReminderListFilter.all}) {

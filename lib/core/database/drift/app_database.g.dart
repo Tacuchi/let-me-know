@@ -501,38 +501,19 @@ class ReminderRow extends DataClass implements Insertable<ReminderRow> {
   final String id;
   final String title;
   final String description;
-
-  /// Fecha/hora programada.
-  /// - null para notas tipo ubicación.
   final int? scheduledAtMs;
-
-  /// Enum name (ReminderType).
   final String type;
-
-  /// Enum name (ReminderStatus).
   final String status;
-
-  /// Enum name (ReminderImportance). Default: medium.
   final String importance;
-
-  /// manual | voice
   final String source;
-
-  /// Metadatos para notas de ubicación (type == 'location')
   final String? object;
   final String? location;
-
-  /// Notificaciones
   final bool hasNotification;
   final int? notificationId;
   final int? lastNotifiedAtMs;
   final int? snoozedUntilMs;
-
-  /// Recurrencia (mínimo viable, para no bloquear objetivo final)
   final String? recurrenceGroupId;
   final String? recurrenceRule;
-
-  /// Auditoría
   final int createdAtMs;
   final int? updatedAtMs;
   final int? completedAtMs;
@@ -1133,15 +1114,862 @@ class RemindersCompanion extends UpdateCompanion<ReminderRow> {
   }
 }
 
+class $ReminderGroupsTable extends ReminderGroups
+    with TableInfo<$ReminderGroupsTable, ReminderGroupRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReminderGroupsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemCountMeta = const VerificationMeta(
+    'itemCount',
+  );
+  @override
+  late final GeneratedColumn<int> itemCount = GeneratedColumn<int>(
+    'item_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMsMeta = const VerificationMeta(
+    'createdAtMs',
+  );
+  @override
+  late final GeneratedColumn<int> createdAtMs = GeneratedColumn<int>(
+    'created_at_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    label,
+    type,
+    itemCount,
+    createdAtMs,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reminder_groups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReminderGroupRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('item_count')) {
+      context.handle(
+        _itemCountMeta,
+        itemCount.isAcceptableOrUnknown(data['item_count']!, _itemCountMeta),
+      );
+    }
+    if (data.containsKey('created_at_ms')) {
+      context.handle(
+        _createdAtMsMeta,
+        createdAtMs.isAcceptableOrUnknown(
+          data['created_at_ms']!,
+          _createdAtMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReminderGroupRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReminderGroupRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      itemCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}item_count'],
+      )!,
+      createdAtMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at_ms'],
+      )!,
+    );
+  }
+
+  @override
+  $ReminderGroupsTable createAlias(String alias) {
+    return $ReminderGroupsTable(attachedDatabase, alias);
+  }
+}
+
+class ReminderGroupRow extends DataClass
+    implements Insertable<ReminderGroupRow> {
+  final String id;
+  final String label;
+  final String type;
+  final int itemCount;
+  final int createdAtMs;
+  const ReminderGroupRow({
+    required this.id,
+    required this.label,
+    required this.type,
+    required this.itemCount,
+    required this.createdAtMs,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['label'] = Variable<String>(label);
+    map['type'] = Variable<String>(type);
+    map['item_count'] = Variable<int>(itemCount);
+    map['created_at_ms'] = Variable<int>(createdAtMs);
+    return map;
+  }
+
+  ReminderGroupsCompanion toCompanion(bool nullToAbsent) {
+    return ReminderGroupsCompanion(
+      id: Value(id),
+      label: Value(label),
+      type: Value(type),
+      itemCount: Value(itemCount),
+      createdAtMs: Value(createdAtMs),
+    );
+  }
+
+  factory ReminderGroupRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReminderGroupRow(
+      id: serializer.fromJson<String>(json['id']),
+      label: serializer.fromJson<String>(json['label']),
+      type: serializer.fromJson<String>(json['type']),
+      itemCount: serializer.fromJson<int>(json['itemCount']),
+      createdAtMs: serializer.fromJson<int>(json['createdAtMs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'label': serializer.toJson<String>(label),
+      'type': serializer.toJson<String>(type),
+      'itemCount': serializer.toJson<int>(itemCount),
+      'createdAtMs': serializer.toJson<int>(createdAtMs),
+    };
+  }
+
+  ReminderGroupRow copyWith({
+    String? id,
+    String? label,
+    String? type,
+    int? itemCount,
+    int? createdAtMs,
+  }) => ReminderGroupRow(
+    id: id ?? this.id,
+    label: label ?? this.label,
+    type: type ?? this.type,
+    itemCount: itemCount ?? this.itemCount,
+    createdAtMs: createdAtMs ?? this.createdAtMs,
+  );
+  ReminderGroupRow copyWithCompanion(ReminderGroupsCompanion data) {
+    return ReminderGroupRow(
+      id: data.id.present ? data.id.value : this.id,
+      label: data.label.present ? data.label.value : this.label,
+      type: data.type.present ? data.type.value : this.type,
+      itemCount: data.itemCount.present ? data.itemCount.value : this.itemCount,
+      createdAtMs: data.createdAtMs.present
+          ? data.createdAtMs.value
+          : this.createdAtMs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReminderGroupRow(')
+          ..write('id: $id, ')
+          ..write('label: $label, ')
+          ..write('type: $type, ')
+          ..write('itemCount: $itemCount, ')
+          ..write('createdAtMs: $createdAtMs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, label, type, itemCount, createdAtMs);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReminderGroupRow &&
+          other.id == this.id &&
+          other.label == this.label &&
+          other.type == this.type &&
+          other.itemCount == this.itemCount &&
+          other.createdAtMs == this.createdAtMs);
+}
+
+class ReminderGroupsCompanion extends UpdateCompanion<ReminderGroupRow> {
+  final Value<String> id;
+  final Value<String> label;
+  final Value<String> type;
+  final Value<int> itemCount;
+  final Value<int> createdAtMs;
+  final Value<int> rowid;
+  const ReminderGroupsCompanion({
+    this.id = const Value.absent(),
+    this.label = const Value.absent(),
+    this.type = const Value.absent(),
+    this.itemCount = const Value.absent(),
+    this.createdAtMs = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReminderGroupsCompanion.insert({
+    required String id,
+    required String label,
+    required String type,
+    this.itemCount = const Value.absent(),
+    required int createdAtMs,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       label = Value(label),
+       type = Value(type),
+       createdAtMs = Value(createdAtMs);
+  static Insertable<ReminderGroupRow> custom({
+    Expression<String>? id,
+    Expression<String>? label,
+    Expression<String>? type,
+    Expression<int>? itemCount,
+    Expression<int>? createdAtMs,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (label != null) 'label': label,
+      if (type != null) 'type': type,
+      if (itemCount != null) 'item_count': itemCount,
+      if (createdAtMs != null) 'created_at_ms': createdAtMs,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReminderGroupsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? label,
+    Value<String>? type,
+    Value<int>? itemCount,
+    Value<int>? createdAtMs,
+    Value<int>? rowid,
+  }) {
+    return ReminderGroupsCompanion(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      type: type ?? this.type,
+      itemCount: itemCount ?? this.itemCount,
+      createdAtMs: createdAtMs ?? this.createdAtMs,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (itemCount.present) {
+      map['item_count'] = Variable<int>(itemCount.value);
+    }
+    if (createdAtMs.present) {
+      map['created_at_ms'] = Variable<int>(createdAtMs.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReminderGroupsCompanion(')
+          ..write('id: $id, ')
+          ..write('label: $label, ')
+          ..write('type: $type, ')
+          ..write('itemCount: $itemCount, ')
+          ..write('createdAtMs: $createdAtMs, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ActionHistoryTable extends ActionHistory
+    with TableInfo<$ActionHistoryTable, ActionHistoryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ActionHistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reminderIdMeta = const VerificationMeta(
+    'reminderId',
+  );
+  @override
+  late final GeneratedColumn<String> reminderId = GeneratedColumn<String>(
+    'reminder_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reminderTitleMeta = const VerificationMeta(
+    'reminderTitle',
+  );
+  @override
+  late final GeneratedColumn<String> reminderTitle = GeneratedColumn<String>(
+    'reminder_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _groupLabelMeta = const VerificationMeta(
+    'groupLabel',
+  );
+  @override
+  late final GeneratedColumn<String> groupLabel = GeneratedColumn<String>(
+    'group_label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _actionAtMsMeta = const VerificationMeta(
+    'actionAtMs',
+  );
+  @override
+  late final GeneratedColumn<int> actionAtMs = GeneratedColumn<int>(
+    'action_at_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    action,
+    reminderId,
+    reminderTitle,
+    groupId,
+    groupLabel,
+    actionAtMs,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'action_history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ActionHistoryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('reminder_id')) {
+      context.handle(
+        _reminderIdMeta,
+        reminderId.isAcceptableOrUnknown(data['reminder_id']!, _reminderIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reminderIdMeta);
+    }
+    if (data.containsKey('reminder_title')) {
+      context.handle(
+        _reminderTitleMeta,
+        reminderTitle.isAcceptableOrUnknown(
+          data['reminder_title']!,
+          _reminderTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_reminderTitleMeta);
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    }
+    if (data.containsKey('group_label')) {
+      context.handle(
+        _groupLabelMeta,
+        groupLabel.isAcceptableOrUnknown(data['group_label']!, _groupLabelMeta),
+      );
+    }
+    if (data.containsKey('action_at_ms')) {
+      context.handle(
+        _actionAtMsMeta,
+        actionAtMs.isAcceptableOrUnknown(
+          data['action_at_ms']!,
+          _actionAtMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_actionAtMsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ActionHistoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ActionHistoryRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      reminderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reminder_id'],
+      )!,
+      reminderTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reminder_title'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      ),
+      groupLabel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_label'],
+      ),
+      actionAtMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}action_at_ms'],
+      )!,
+    );
+  }
+
+  @override
+  $ActionHistoryTable createAlias(String alias) {
+    return $ActionHistoryTable(attachedDatabase, alias);
+  }
+}
+
+class ActionHistoryRow extends DataClass
+    implements Insertable<ActionHistoryRow> {
+  final String id;
+  final String action;
+  final String reminderId;
+  final String reminderTitle;
+  final String? groupId;
+  final String? groupLabel;
+  final int actionAtMs;
+  const ActionHistoryRow({
+    required this.id,
+    required this.action,
+    required this.reminderId,
+    required this.reminderTitle,
+    this.groupId,
+    this.groupLabel,
+    required this.actionAtMs,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['action'] = Variable<String>(action);
+    map['reminder_id'] = Variable<String>(reminderId);
+    map['reminder_title'] = Variable<String>(reminderTitle);
+    if (!nullToAbsent || groupId != null) {
+      map['group_id'] = Variable<String>(groupId);
+    }
+    if (!nullToAbsent || groupLabel != null) {
+      map['group_label'] = Variable<String>(groupLabel);
+    }
+    map['action_at_ms'] = Variable<int>(actionAtMs);
+    return map;
+  }
+
+  ActionHistoryCompanion toCompanion(bool nullToAbsent) {
+    return ActionHistoryCompanion(
+      id: Value(id),
+      action: Value(action),
+      reminderId: Value(reminderId),
+      reminderTitle: Value(reminderTitle),
+      groupId: groupId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(groupId),
+      groupLabel: groupLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(groupLabel),
+      actionAtMs: Value(actionAtMs),
+    );
+  }
+
+  factory ActionHistoryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ActionHistoryRow(
+      id: serializer.fromJson<String>(json['id']),
+      action: serializer.fromJson<String>(json['action']),
+      reminderId: serializer.fromJson<String>(json['reminderId']),
+      reminderTitle: serializer.fromJson<String>(json['reminderTitle']),
+      groupId: serializer.fromJson<String?>(json['groupId']),
+      groupLabel: serializer.fromJson<String?>(json['groupLabel']),
+      actionAtMs: serializer.fromJson<int>(json['actionAtMs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'action': serializer.toJson<String>(action),
+      'reminderId': serializer.toJson<String>(reminderId),
+      'reminderTitle': serializer.toJson<String>(reminderTitle),
+      'groupId': serializer.toJson<String?>(groupId),
+      'groupLabel': serializer.toJson<String?>(groupLabel),
+      'actionAtMs': serializer.toJson<int>(actionAtMs),
+    };
+  }
+
+  ActionHistoryRow copyWith({
+    String? id,
+    String? action,
+    String? reminderId,
+    String? reminderTitle,
+    Value<String?> groupId = const Value.absent(),
+    Value<String?> groupLabel = const Value.absent(),
+    int? actionAtMs,
+  }) => ActionHistoryRow(
+    id: id ?? this.id,
+    action: action ?? this.action,
+    reminderId: reminderId ?? this.reminderId,
+    reminderTitle: reminderTitle ?? this.reminderTitle,
+    groupId: groupId.present ? groupId.value : this.groupId,
+    groupLabel: groupLabel.present ? groupLabel.value : this.groupLabel,
+    actionAtMs: actionAtMs ?? this.actionAtMs,
+  );
+  ActionHistoryRow copyWithCompanion(ActionHistoryCompanion data) {
+    return ActionHistoryRow(
+      id: data.id.present ? data.id.value : this.id,
+      action: data.action.present ? data.action.value : this.action,
+      reminderId: data.reminderId.present
+          ? data.reminderId.value
+          : this.reminderId,
+      reminderTitle: data.reminderTitle.present
+          ? data.reminderTitle.value
+          : this.reminderTitle,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      groupLabel: data.groupLabel.present
+          ? data.groupLabel.value
+          : this.groupLabel,
+      actionAtMs: data.actionAtMs.present
+          ? data.actionAtMs.value
+          : this.actionAtMs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActionHistoryRow(')
+          ..write('id: $id, ')
+          ..write('action: $action, ')
+          ..write('reminderId: $reminderId, ')
+          ..write('reminderTitle: $reminderTitle, ')
+          ..write('groupId: $groupId, ')
+          ..write('groupLabel: $groupLabel, ')
+          ..write('actionAtMs: $actionAtMs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    action,
+    reminderId,
+    reminderTitle,
+    groupId,
+    groupLabel,
+    actionAtMs,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ActionHistoryRow &&
+          other.id == this.id &&
+          other.action == this.action &&
+          other.reminderId == this.reminderId &&
+          other.reminderTitle == this.reminderTitle &&
+          other.groupId == this.groupId &&
+          other.groupLabel == this.groupLabel &&
+          other.actionAtMs == this.actionAtMs);
+}
+
+class ActionHistoryCompanion extends UpdateCompanion<ActionHistoryRow> {
+  final Value<String> id;
+  final Value<String> action;
+  final Value<String> reminderId;
+  final Value<String> reminderTitle;
+  final Value<String?> groupId;
+  final Value<String?> groupLabel;
+  final Value<int> actionAtMs;
+  final Value<int> rowid;
+  const ActionHistoryCompanion({
+    this.id = const Value.absent(),
+    this.action = const Value.absent(),
+    this.reminderId = const Value.absent(),
+    this.reminderTitle = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.groupLabel = const Value.absent(),
+    this.actionAtMs = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ActionHistoryCompanion.insert({
+    required String id,
+    required String action,
+    required String reminderId,
+    required String reminderTitle,
+    this.groupId = const Value.absent(),
+    this.groupLabel = const Value.absent(),
+    required int actionAtMs,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       action = Value(action),
+       reminderId = Value(reminderId),
+       reminderTitle = Value(reminderTitle),
+       actionAtMs = Value(actionAtMs);
+  static Insertable<ActionHistoryRow> custom({
+    Expression<String>? id,
+    Expression<String>? action,
+    Expression<String>? reminderId,
+    Expression<String>? reminderTitle,
+    Expression<String>? groupId,
+    Expression<String>? groupLabel,
+    Expression<int>? actionAtMs,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (action != null) 'action': action,
+      if (reminderId != null) 'reminder_id': reminderId,
+      if (reminderTitle != null) 'reminder_title': reminderTitle,
+      if (groupId != null) 'group_id': groupId,
+      if (groupLabel != null) 'group_label': groupLabel,
+      if (actionAtMs != null) 'action_at_ms': actionAtMs,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ActionHistoryCompanion copyWith({
+    Value<String>? id,
+    Value<String>? action,
+    Value<String>? reminderId,
+    Value<String>? reminderTitle,
+    Value<String?>? groupId,
+    Value<String?>? groupLabel,
+    Value<int>? actionAtMs,
+    Value<int>? rowid,
+  }) {
+    return ActionHistoryCompanion(
+      id: id ?? this.id,
+      action: action ?? this.action,
+      reminderId: reminderId ?? this.reminderId,
+      reminderTitle: reminderTitle ?? this.reminderTitle,
+      groupId: groupId ?? this.groupId,
+      groupLabel: groupLabel ?? this.groupLabel,
+      actionAtMs: actionAtMs ?? this.actionAtMs,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (reminderId.present) {
+      map['reminder_id'] = Variable<String>(reminderId.value);
+    }
+    if (reminderTitle.present) {
+      map['reminder_title'] = Variable<String>(reminderTitle.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (groupLabel.present) {
+      map['group_label'] = Variable<String>(groupLabel.value);
+    }
+    if (actionAtMs.present) {
+      map['action_at_ms'] = Variable<int>(actionAtMs.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActionHistoryCompanion(')
+          ..write('id: $id, ')
+          ..write('action: $action, ')
+          ..write('reminderId: $reminderId, ')
+          ..write('reminderTitle: $reminderTitle, ')
+          ..write('groupId: $groupId, ')
+          ..write('groupLabel: $groupLabel, ')
+          ..write('actionAtMs: $actionAtMs, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $RemindersTable reminders = $RemindersTable(this);
+  late final $ReminderGroupsTable reminderGroups = $ReminderGroupsTable(this);
+  late final $ActionHistoryTable actionHistory = $ActionHistoryTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [reminders];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    reminders,
+    reminderGroups,
+    actionHistory,
+  ];
 }
 
 typedef $$RemindersTableCreateCompanionBuilder =
@@ -1634,10 +2462,472 @@ typedef $$RemindersTableProcessedTableManager =
       ReminderRow,
       PrefetchHooks Function()
     >;
+typedef $$ReminderGroupsTableCreateCompanionBuilder =
+    ReminderGroupsCompanion Function({
+      required String id,
+      required String label,
+      required String type,
+      Value<int> itemCount,
+      required int createdAtMs,
+      Value<int> rowid,
+    });
+typedef $$ReminderGroupsTableUpdateCompanionBuilder =
+    ReminderGroupsCompanion Function({
+      Value<String> id,
+      Value<String> label,
+      Value<String> type,
+      Value<int> itemCount,
+      Value<int> createdAtMs,
+      Value<int> rowid,
+    });
+
+class $$ReminderGroupsTableFilterComposer
+    extends Composer<_$AppDatabase, $ReminderGroupsTable> {
+  $$ReminderGroupsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get itemCount => $composableBuilder(
+    column: $table.itemCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAtMs => $composableBuilder(
+    column: $table.createdAtMs,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReminderGroupsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReminderGroupsTable> {
+  $$ReminderGroupsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get itemCount => $composableBuilder(
+    column: $table.itemCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAtMs => $composableBuilder(
+    column: $table.createdAtMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReminderGroupsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReminderGroupsTable> {
+  $$ReminderGroupsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<int> get itemCount =>
+      $composableBuilder(column: $table.itemCount, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAtMs => $composableBuilder(
+    column: $table.createdAtMs,
+    builder: (column) => column,
+  );
+}
+
+class $$ReminderGroupsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReminderGroupsTable,
+          ReminderGroupRow,
+          $$ReminderGroupsTableFilterComposer,
+          $$ReminderGroupsTableOrderingComposer,
+          $$ReminderGroupsTableAnnotationComposer,
+          $$ReminderGroupsTableCreateCompanionBuilder,
+          $$ReminderGroupsTableUpdateCompanionBuilder,
+          (
+            ReminderGroupRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ReminderGroupsTable,
+              ReminderGroupRow
+            >,
+          ),
+          ReminderGroupRow,
+          PrefetchHooks Function()
+        > {
+  $$ReminderGroupsTableTableManager(
+    _$AppDatabase db,
+    $ReminderGroupsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReminderGroupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReminderGroupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReminderGroupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<int> itemCount = const Value.absent(),
+                Value<int> createdAtMs = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReminderGroupsCompanion(
+                id: id,
+                label: label,
+                type: type,
+                itemCount: itemCount,
+                createdAtMs: createdAtMs,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String label,
+                required String type,
+                Value<int> itemCount = const Value.absent(),
+                required int createdAtMs,
+                Value<int> rowid = const Value.absent(),
+              }) => ReminderGroupsCompanion.insert(
+                id: id,
+                label: label,
+                type: type,
+                itemCount: itemCount,
+                createdAtMs: createdAtMs,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReminderGroupsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReminderGroupsTable,
+      ReminderGroupRow,
+      $$ReminderGroupsTableFilterComposer,
+      $$ReminderGroupsTableOrderingComposer,
+      $$ReminderGroupsTableAnnotationComposer,
+      $$ReminderGroupsTableCreateCompanionBuilder,
+      $$ReminderGroupsTableUpdateCompanionBuilder,
+      (
+        ReminderGroupRow,
+        BaseReferences<_$AppDatabase, $ReminderGroupsTable, ReminderGroupRow>,
+      ),
+      ReminderGroupRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ActionHistoryTableCreateCompanionBuilder =
+    ActionHistoryCompanion Function({
+      required String id,
+      required String action,
+      required String reminderId,
+      required String reminderTitle,
+      Value<String?> groupId,
+      Value<String?> groupLabel,
+      required int actionAtMs,
+      Value<int> rowid,
+    });
+typedef $$ActionHistoryTableUpdateCompanionBuilder =
+    ActionHistoryCompanion Function({
+      Value<String> id,
+      Value<String> action,
+      Value<String> reminderId,
+      Value<String> reminderTitle,
+      Value<String?> groupId,
+      Value<String?> groupLabel,
+      Value<int> actionAtMs,
+      Value<int> rowid,
+    });
+
+class $$ActionHistoryTableFilterComposer
+    extends Composer<_$AppDatabase, $ActionHistoryTable> {
+  $$ActionHistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reminderId => $composableBuilder(
+    column: $table.reminderId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reminderTitle => $composableBuilder(
+    column: $table.reminderTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupLabel => $composableBuilder(
+    column: $table.groupLabel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get actionAtMs => $composableBuilder(
+    column: $table.actionAtMs,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ActionHistoryTableOrderingComposer
+    extends Composer<_$AppDatabase, $ActionHistoryTable> {
+  $$ActionHistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reminderId => $composableBuilder(
+    column: $table.reminderId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reminderTitle => $composableBuilder(
+    column: $table.reminderTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupLabel => $composableBuilder(
+    column: $table.groupLabel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get actionAtMs => $composableBuilder(
+    column: $table.actionAtMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ActionHistoryTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ActionHistoryTable> {
+  $$ActionHistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get reminderId => $composableBuilder(
+    column: $table.reminderId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reminderTitle => $composableBuilder(
+    column: $table.reminderTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get groupLabel => $composableBuilder(
+    column: $table.groupLabel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get actionAtMs => $composableBuilder(
+    column: $table.actionAtMs,
+    builder: (column) => column,
+  );
+}
+
+class $$ActionHistoryTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ActionHistoryTable,
+          ActionHistoryRow,
+          $$ActionHistoryTableFilterComposer,
+          $$ActionHistoryTableOrderingComposer,
+          $$ActionHistoryTableAnnotationComposer,
+          $$ActionHistoryTableCreateCompanionBuilder,
+          $$ActionHistoryTableUpdateCompanionBuilder,
+          (
+            ActionHistoryRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ActionHistoryTable,
+              ActionHistoryRow
+            >,
+          ),
+          ActionHistoryRow,
+          PrefetchHooks Function()
+        > {
+  $$ActionHistoryTableTableManager(_$AppDatabase db, $ActionHistoryTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ActionHistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ActionHistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ActionHistoryTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<String> reminderId = const Value.absent(),
+                Value<String> reminderTitle = const Value.absent(),
+                Value<String?> groupId = const Value.absent(),
+                Value<String?> groupLabel = const Value.absent(),
+                Value<int> actionAtMs = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ActionHistoryCompanion(
+                id: id,
+                action: action,
+                reminderId: reminderId,
+                reminderTitle: reminderTitle,
+                groupId: groupId,
+                groupLabel: groupLabel,
+                actionAtMs: actionAtMs,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String action,
+                required String reminderId,
+                required String reminderTitle,
+                Value<String?> groupId = const Value.absent(),
+                Value<String?> groupLabel = const Value.absent(),
+                required int actionAtMs,
+                Value<int> rowid = const Value.absent(),
+              }) => ActionHistoryCompanion.insert(
+                id: id,
+                action: action,
+                reminderId: reminderId,
+                reminderTitle: reminderTitle,
+                groupId: groupId,
+                groupLabel: groupLabel,
+                actionAtMs: actionAtMs,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ActionHistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ActionHistoryTable,
+      ActionHistoryRow,
+      $$ActionHistoryTableFilterComposer,
+      $$ActionHistoryTableOrderingComposer,
+      $$ActionHistoryTableAnnotationComposer,
+      $$ActionHistoryTableCreateCompanionBuilder,
+      $$ActionHistoryTableUpdateCompanionBuilder,
+      (
+        ActionHistoryRow,
+        BaseReferences<_$AppDatabase, $ActionHistoryTable, ActionHistoryRow>,
+      ),
+      ActionHistoryRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
   $$RemindersTableTableManager get reminders =>
       $$RemindersTableTableManager(_db, _db.reminders);
+  $$ReminderGroupsTableTableManager get reminderGroups =>
+      $$ReminderGroupsTableTableManager(_db, _db.reminderGroups);
+  $$ActionHistoryTableTableManager get actionHistory =>
+      $$ActionHistoryTableTableManager(_db, _db.actionHistory);
 }

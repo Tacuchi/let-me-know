@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../core/services/feedback_service.dart';
+import '../../../../router/app_routes.dart';
+import '../../../groups/domain/entities/reminder_group.dart';
+import '../../../groups/domain/repositories/group_repository.dart';
 import '../../../reminders/domain/entities/reminder.dart';
 import '../../../reminders/domain/entities/reminder_source.dart';
 import '../../../reminders/domain/entities/reminder_status.dart';
@@ -17,21 +20,16 @@ import '../../../../services/assistant/voice_assistant_service.dart';
 import '../../../../services/speech_to_text/speech_to_text_service.dart';
 import '../../../../services/tts/tts_service.dart';
 
-class VoiceCommandMode extends StatefulWidget {
-  final bool isActive;
-  final VoidCallback? onSwipeHint;
-
-  const VoiceCommandMode({
-    super.key,
-    required this.isActive,
-    this.onSwipeHint,
-  });
+/// Vista unificada del asistente de voz.
+/// Maneja todos los comandos: crear, consultar, completar, eliminar.
+class VoiceAssistantView extends StatefulWidget {
+  const VoiceAssistantView({super.key});
 
   @override
-  State<VoiceCommandMode> createState() => _VoiceCommandModeState();
+  State<VoiceAssistantView> createState() => _VoiceAssistantViewState();
 }
 
-class _VoiceCommandModeState extends State<VoiceCommandMode> {
+class _VoiceAssistantViewState extends State<VoiceAssistantView> {
   bool _isRecording = false;
   String? _transcription;
   String? _error;
@@ -43,6 +41,8 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
   late final FeedbackService _feedbackService;
   late final VoiceAssistantService _assistantService;
   late final TtsService _ttsService;
+  late final ReminderRepository _reminderRepository;
+  late final GroupRepository _groupRepository;
 
   @override
   void initState() {
@@ -51,6 +51,8 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     _feedbackService = getIt<FeedbackService>();
     _assistantService = getIt<VoiceAssistantService>();
     _ttsService = getIt<TtsService>();
+    _reminderRepository = getIt<ReminderRepository>();
+    _groupRepository = getIt<GroupRepository>();
     _initializeSpeech();
     _initializeTts();
   }
@@ -100,10 +102,15 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     return _buildRecordingView(isDark);
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Vista: Procesando
+  // ─────────────────────────────────────────────────────────────────────────
+
   Widget _buildProcessingView(bool isDark) {
     final primaryColor =
         isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
 
     return Center(
       child: Column(
@@ -123,32 +130,41 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
             style: AppTypography.titleSmall.copyWith(color: textColor),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            _transcription ?? '',
-            style: AppTypography.bodySmall.copyWith(
-              color: isDark
-                  ? AppColors.textSecondaryDark
-                  : AppColors.textSecondary,
-              fontStyle: FontStyle.italic,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: Text(
+              _transcription ?? '',
+              style: AppTypography.bodySmall.copyWith(
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Vista: Respuesta (solo para consultas y clarificaciones)
+  // ─────────────────────────────────────────────────────────────────────────
+
   Widget _buildResponseView(bool isDark) {
     final response = _response!;
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final secondaryColor =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
-    final successColor =
-        isDark ? AppColors.accentSecondaryDark : AppColors.accentSecondary;
+    final primaryColor =
+        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
 
-    final isSuccess = response.action == AssistantAction.createReminder ||
-        response.action == AssistantAction.createNote;
+    final isQuery = response.action == AssistantAction.queryResponse;
     final needsClarification =
         response.action == AssistantAction.clarificationNeeded;
 
@@ -156,36 +172,35 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
       child: Column(
         children: [
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
+          // Icono
           Container(
             width: 72,
             height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: (isSuccess ? successColor : secondaryColor)
-                  .withValues(alpha: 0.15),
+              color: primaryColor.withValues(alpha: 0.15),
             ),
             child: Icon(
-              isSuccess
-                  ? Icons.check_rounded
+              isQuery
+                  ? Icons.chat_bubble_outline_rounded
                   : (needsClarification
                       ? Icons.help_outline_rounded
-                      : Icons.chat_bubble_outline_rounded),
+                      : Icons.info_outline_rounded),
               size: 36,
-              color: isSuccess ? successColor : secondaryColor,
+              color: primaryColor,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            isSuccess
-                ? '¡Listo!'
-                : (needsClarification ? 'Necesito más información' : 'Entendido'),
+            needsClarification ? 'Necesito más información' : 'Respuesta',
             style: AppTypography.titleMedium.copyWith(
               color: textColor,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
+          // Contenedor de respuesta
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -202,13 +217,13 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
                 Row(
                   children: [
                     Icon(
-                      Icons.chat_bubble_outline_rounded,
+                      Icons.record_voice_over_rounded,
                       size: 20,
                       color: secondaryColor,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
-                      'Respuesta',
+                      'El asistente dice:',
                       style: AppTypography.label.copyWith(color: secondaryColor),
                     ),
                   ],
@@ -225,14 +240,15 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          _buildResponseButtons(isDark, isSuccess),
+          // Botones de acción
+          _buildResponseButtons(isDark, needsClarification),
           const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );
   }
 
-  Widget _buildResponseButtons(bool isDark, bool isSuccess) {
+  Widget _buildResponseButtons(bool isDark, bool needsClarification) {
     final primaryColor =
         isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
     final secondaryColor =
@@ -253,9 +269,12 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
               ),
               elevation: 0,
             ),
-            icon: Icon(isSuccess ? Icons.add_rounded : Icons.mic_rounded, size: 22),
+            icon: Icon(
+              needsClarification ? Icons.mic_rounded : Icons.refresh_rounded,
+              size: 22,
+            ),
             label: Text(
-              isSuccess ? 'Crear otro' : 'Intentar de nuevo',
+              needsClarification ? 'Intentar de nuevo' : 'Nueva consulta',
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -297,6 +316,10 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     });
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Vista: Grabación (estado inicial)
+  // ─────────────────────────────────────────────────────────────────────────
+
   Widget _buildRecordingView(bool isDark) {
     final secondaryColor =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
@@ -323,7 +346,7 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
           const SizedBox(height: AppSpacing.lg),
           AnimatedMicButton(
             isRecording: _isRecording,
-            onTap: widget.isActive ? _toggleRecording : null,
+            onTap: _toggleRecording,
             size: 88,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -338,41 +361,18 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          _buildSwipeHint(isDark, isUp: true),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );
   }
 
-  Widget _buildSwipeHint(bool isDark, {required bool isUp}) {
-    final hintColor =
-        (isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)
-            .withValues(alpha: 0.6);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          isUp ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-          color: hintColor,
-          size: 20,
-        ),
-        Text(
-          isUp ? 'Desliza para consultar' : 'Desliza para crear',
-          style: AppTypography.helper.copyWith(
-            color: hintColor,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildStateHeader(bool isDark) {
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final recordingColor = AppColors.recording;
+    final primaryColor =
+        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
 
     String title;
     IconData icon;
@@ -385,11 +385,12 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     } else if (_transcription != null && _transcription!.isNotEmpty) {
       title = 'Revisando texto';
       icon = Icons.edit_note_rounded;
-      iconColor = isDark ? AppColors.accentSecondaryDark : AppColors.accentSecondary;
+      iconColor =
+          isDark ? AppColors.accentSecondaryDark : AppColors.accentSecondary;
     } else {
-      title = 'Crear recordatorio';
-      icon = Icons.add_circle_outline_rounded;
-      iconColor = isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+      title = 'Habla conmigo';
+      icon = Icons.record_voice_over_rounded;
+      iconColor = primaryColor;
     }
 
     return AnimatedSwitcher(
@@ -428,32 +429,64 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.record_voice_over_rounded,
+            Icons.mic_none_rounded,
             size: 64,
             color: secondaryColor.withValues(alpha: 0.5),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            'Di tu recordatorio en voz alta',
+            'Dime lo que necesitas',
             style: AppTypography.bodyLarge.copyWith(color: secondaryColor),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Por ejemplo: "Recordarme tomar mis pastillas a las 3 PM"',
-            style: AppTypography.bodySmall.copyWith(
-              color: secondaryColor.withValues(alpha: 0.7),
-              fontStyle: FontStyle.italic,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildExamplesChips(isDark),
         ],
       ),
     );
   }
 
+  Widget _buildExamplesChips(bool isDark) {
+    final helperColor =
+        isDark ? AppColors.textHelperDark : AppColors.textHelper;
+    final bgColor = isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary;
+
+    final examples = [
+      '"Recordarme tomar pastillas a las 3pm"',
+      '"Dejé las llaves en la cocina"',
+      '"¿Qué tengo pendiente hoy?"',
+    ];
+
+    return Column(
+      children: examples.map((example) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            ),
+            child: Text(
+              example,
+              style: AppTypography.bodySmall.copyWith(
+                color: helperColor,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildLiveTranscriptionArea(bool isDark) {
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
     final borderColor = _isRecording
         ? AppColors.recording.withValues(alpha: 0.5)
@@ -495,7 +528,7 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
-                  'Tu recordatorio',
+                  'Tu mensaje',
                   style: AppTypography.label.copyWith(
                     color: isDark
                         ? AppColors.textSecondaryDark
@@ -559,6 +592,9 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Lógica de grabación y procesamiento
+  // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _toggleRecording() async {
     _feedbackService.medium();
@@ -643,17 +679,32 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
 
       if (!mounted) return;
 
-      setState(() {
-        _response = response;
-        _isProcessing = false;
-      });
+      // Determinar si es una acción exitosa que debe cerrar la pantalla
+      final isSuccessAction = _isSuccessAction(response.action);
 
-      // Ejecutar acción según respuesta
-      await _executeAction(response);
+      if (isSuccessAction) {
+        // Ejecutar acción
+        await _executeAction(response);
 
-      // Reproducir respuesta con TTS
-      if (response.spokenResponse.isNotEmpty) {
-        await _ttsService.speak(response.spokenResponse);
+        // Cerrar pantalla y navegar a Home
+        if (mounted) {
+          context.pop();
+          context.goNamed(AppRoutes.homeName);
+
+          // Mostrar toast con TTS
+          _showSuccessToast(response.spokenResponse);
+        }
+      } else {
+        // Para consultas y clarificaciones, mostrar en la misma pantalla
+        setState(() {
+          _response = response;
+          _isProcessing = false;
+        });
+
+        // Reproducir respuesta con TTS
+        if (response.spokenResponse.isNotEmpty) {
+          await _ttsService.speak(response.spokenResponse);
+        }
       }
     } on ApiConnectionException {
       if (mounted) {
@@ -688,9 +739,54 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     }
   }
 
-  Future<void> _executeAction(AssistantResponse response) async {
-    final repository = getIt<ReminderRepository>();
+  /// Determina si la acción es exitosa y debe cerrar la pantalla.
+  bool _isSuccessAction(AssistantAction action) {
+    return switch (action) {
+      AssistantAction.createReminder => true,
+      AssistantAction.createNote => true,
+      AssistantAction.createBatch => true,
+      AssistantAction.completeReminder => true,
+      AssistantAction.deleteReminder => true,
+      AssistantAction.deleteGroup => true,
+      AssistantAction.updateReminder => true,
+      _ => false,
+    };
+  }
 
+  /// Muestra un toast temporal con TTS.
+  void _showSuccessToast(String message) {
+    // Reproducir TTS
+    _ttsService.speak(message);
+
+    // Mostrar SnackBar como toast (4 segundos)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(fontSize: 15),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.accentSecondary,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        ),
+        margin: const EdgeInsets.all(AppSpacing.md),
+      ),
+    );
+  }
+
+  Future<void> _executeAction(AssistantResponse response) async {
     switch (response.action) {
       case AssistantAction.createReminder:
         final data = response.createReminderData!;
@@ -708,7 +804,7 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
           hasNotification: data.scheduledAt != null,
           createdAt: DateTime.now(),
         );
-        await repository.save(reminder);
+        await _reminderRepository.save(reminder);
         await _feedbackService.success();
 
       case AssistantAction.createNote:
@@ -727,16 +823,77 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
           hasNotification: false,
           createdAt: DateTime.now(),
         );
-        await repository.save(note);
+        await _reminderRepository.save(note);
         await _feedbackService.success();
 
-      case AssistantAction.clarificationNeeded:
-      case AssistantAction.noAction:
+      case AssistantAction.createBatch:
+        final data = response.batchCreateData!;
+        // Crear el grupo primero
+        final group = ReminderGroup(
+          id: data.groupId,
+          label: data.groupLabel,
+          type: 'medication',
+          itemCount: data.items.length,
+          createdAt: DateTime.now(),
+        );
+        await _groupRepository.save(group);
+        // Crear cada recordatorio del batch
+        for (final item in data.items) {
+          final reminder = Reminder(
+            id: const Uuid().v4(),
+            title: item.title,
+            description: _transcription ?? '',
+            scheduledAt: item.scheduledAt,
+            type: item.type,
+            status: ReminderStatus.pending,
+            importance: item.importance,
+            source: ReminderSource.voice,
+            object: item.object,
+            location: item.location,
+            hasNotification: item.scheduledAt != null,
+            recurrenceGroupId: data.groupId,
+            createdAt: DateTime.now(),
+          );
+          await _reminderRepository.save(reminder);
+        }
+        await _feedbackService.success();
+
+      case AssistantAction.completeReminder:
+        final data = response.completeReminderData;
+        if (data != null) {
+          await _reminderRepository.markAsCompleted(data.reminderId);
+          HapticFeedback.mediumImpact();
+        }
+
+      case AssistantAction.deleteReminder:
+        final data = response.deleteReminderData;
+        if (data != null) {
+          await _reminderRepository.delete(data.reminderId);
+          HapticFeedback.mediumImpact();
+        }
+
+      case AssistantAction.deleteGroup:
+        final data = response.deleteGroupData;
+        if (data != null) {
+          // Obtener y eliminar todos los recordatorios del grupo
+          final reminders = await _reminderRepository.getAll();
+          final groupReminders = reminders
+              .where((r) => r.recurrenceGroupId == data.groupId)
+              .toList();
+          for (final reminder in groupReminders) {
+            await _reminderRepository.delete(reminder.id);
+          }
+          // Eliminar el grupo
+          await _groupRepository.delete(data.groupId);
+          HapticFeedback.mediumImpact();
+        }
+
+      case AssistantAction.updateReminder:
+        // TODO: Implementar actualización
         _feedbackService.light();
 
       default:
         break;
     }
   }
-
 }

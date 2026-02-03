@@ -19,15 +19,19 @@ final class ReminderSummaryLoaded extends ReminderSummaryState {
   final int completed;
   final List<Reminder> upcoming;
 
+  /// Recordatorios que vencen en las próximas 2 horas.
+  final List<Reminder> imminentAlerts;
+
   const ReminderSummaryLoaded({
     required this.pending,
     required this.overdue,
     required this.completed,
     this.upcoming = const [],
+    this.imminentAlerts = const [],
   });
 
   @override
-  List<Object?> get props => [pending, overdue, completed, upcoming];
+  List<Object?> get props => [pending, overdue, completed, upcoming, imminentAlerts];
 }
 
 final class ReminderSummaryError extends ReminderSummaryState {

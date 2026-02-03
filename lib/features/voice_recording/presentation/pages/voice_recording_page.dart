@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../core/services/feedback_service.dart';
-import '../widgets/voice_command_mode.dart';
-import '../widgets/voice_query_mode.dart';
+import '../widgets/voice_assistant_view.dart';
 
+/// Página de asistente de voz unificada.
+/// Permite crear recordatorios, notas, consultar y más con un solo flujo.
 class VoiceRecordingPage extends StatefulWidget {
   const VoiceRecordingPage({super.key});
 
@@ -16,23 +17,15 @@ class VoiceRecordingPage extends StatefulWidget {
 }
 
 class _VoiceRecordingPageState extends State<VoiceRecordingPage>
-    with TickerProviderStateMixin {
-  late final PageController _pageController;
-  int _currentPage = 0;
+    with SingleTickerProviderStateMixin {
   late final FeedbackService _feedbackService;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  // Colores del modo consulta (para transición del AppBar)
-  static const _queryPrimary = Color(0xFF7C4DFF);
-  static const _queryBg = Color(0xFFF3E5F5);
-  static const _queryBgDark = Color(0xFF1A1A2E);
-
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
 
     _fadeController = AnimationController(
       vsync: this,
@@ -49,7 +42,6 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
 
   @override
   void dispose() {
-    _pageController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -57,20 +49,11 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isQueryMode = _currentPage == 1;
-
-    // Colores que cambian según el modo
-    final bgColor = isQueryMode
-        ? (isDark ? _queryBgDark : _queryBg)
-        : (isDark ? AppColors.bgPrimaryDark : AppColors.bgPrimary);
-    final appBarBgColor = isQueryMode
-        ? (isDark ? _queryBgDark : _queryBg)
-        : (isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary);
+    final bgColor = isDark ? AppColors.bgPrimaryDark : AppColors.bgPrimary;
+    final appBarBgColor =
+        isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
     final textColor =
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final accentColor = isQueryMode
-        ? _queryPrimary
-        : (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -84,13 +67,9 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
             context.pop();
           },
         ),
-        title: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: Text(
-            key: ValueKey(isQueryMode),
-            isQueryMode ? 'Consultar' : 'Crear',
-            style: AppTypography.titleMedium.copyWith(color: textColor),
-          ),
+        title: Text(
+          'Habla conmigo',
+          style: AppTypography.titleMedium.copyWith(color: textColor),
         ),
         centerTitle: true,
         actions: [
@@ -99,7 +78,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
             tooltip: 'Ayuda',
             onPressed: () {
               _feedbackService.light();
-              _showHelpSheet(context, isDark, isQueryMode);
+              _showHelpSheet(context, isDark);
             },
           ),
         ],
@@ -107,83 +86,18 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Stack(
-            children: [
-              PageView(
-                controller: _pageController,
-                scrollDirection: Axis.vertical,
-                onPageChanged: (page) {
-                  _feedbackService.selection();
-                  setState(() => _currentPage = page);
-                },
-                children: [
-                  VoiceCommandMode(isActive: _currentPage == 0),
-                  VoiceQueryMode(isActive: _currentPage == 1),
-                ],
-              ),
-              // Indicador de página
-              Positioned(
-                right: AppSpacing.md,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: _buildPageIndicator(isDark, accentColor),
-                ),
-              ),
-            ],
-          ),
+          child: const VoiceAssistantView(),
         ),
       ),
     );
   }
 
-  Widget _buildPageIndicator(bool isDark, Color accentColor) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildIndicatorDot(0, isDark, accentColor),
-        const SizedBox(height: AppSpacing.sm),
-        _buildIndicatorDot(1, isDark, accentColor),
-      ],
-    );
-  }
-
-  Widget _buildIndicatorDot(int index, bool isDark, Color accentColor) {
-    final isActive = _currentPage == index;
-    final inactiveColor =
-        (isDark ? AppColors.textSecondaryDark : AppColors.textSecondary)
-            .withValues(alpha: 0.3);
-
-    return GestureDetector(
-      onTap: () {
-        _feedbackService.selection();
-        _pageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: isActive ? 10 : 8,
-        height: isActive ? 10 : 8,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isActive ? accentColor : inactiveColor,
-        ),
-      ),
-    );
-  }
-
-
-
-  void _showHelpSheet(BuildContext context, bool isDark, bool isQueryMode) {
+  void _showHelpSheet(BuildContext context, bool isDark) {
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
     final textColor =
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final primaryColor = isQueryMode
-        ? _queryPrimary
-        : (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary);
+    final primaryColor =
+        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
 
     showModalBottomSheet(
       context: context,
@@ -208,35 +122,36 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Icon(
-                  isQueryMode
-                      ? Icons.search_rounded
-                      : Icons.tips_and_updates_rounded,
+                  Icons.tips_and_updates_rounded,
                   size: 48,
                   color: primaryColor,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  isQueryMode ? 'Cómo consultar' : 'Consejos para grabar',
+                  '¿Qué puedo hacer?',
                   style: AppTypography.titleMedium.copyWith(color: textColor),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                if (isQueryMode) ...[
-                  _buildTip(
-                      '🔍', '"¿Dónde dejé mis llaves?"', isDark),
-                  _buildTip(
-                      '📋', '"¿Qué tengo pendiente para hoy?"', isDark),
-                  _buildTip(
-                      '⬇️', 'Desliza hacia abajo para crear', isDark),
-                ] else ...[
-                  _buildTip('🎤', 'Habla claro y a velocidad normal', isDark),
-                  _buildTip(
-                    '📅',
-                    'Incluye la fecha y hora del recordatorio',
-                    isDark,
-                  ),
-                  _buildTip(
-                      '⬆️', 'Desliza hacia arriba para consultar', isDark),
-                ],
+                _buildTip(
+                  '🔔',
+                  'Crear recordatorios: "Recordarme tomar pastillas a las 3pm"',
+                  isDark,
+                ),
+                _buildTip(
+                  '📝',
+                  'Guardar notas: "Dejé las llaves en la cocina"',
+                  isDark,
+                ),
+                _buildTip(
+                  '🔍',
+                  'Consultar: "¿Dónde dejé mis llaves?"',
+                  isDark,
+                ),
+                _buildTip(
+                  '✅',
+                  'Completar: "Marca como hecho tomar pastillas"',
+                  isDark,
+                ),
                 const SizedBox(height: AppSpacing.md),
               ],
             ),
@@ -253,6 +168,7 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(emoji, style: const TextStyle(fontSize: 24)),
           const SizedBox(width: AppSpacing.md),
