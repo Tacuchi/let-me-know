@@ -9,9 +9,13 @@ import '../../../../core/services/feedback_service.dart';
 import '../../../reminders/domain/entities/reminder.dart';
 import '../../../reminders/domain/entities/reminder_source.dart';
 import '../../../reminders/domain/entities/reminder_status.dart';
+import '../../../reminders/domain/entities/reminder_type.dart';
 import '../../../reminders/domain/repositories/reminder_repository.dart';
+import '../../../../services/assistant/assistant_api_client.dart';
+import '../../../../services/assistant/models/assistant_response.dart';
+import '../../../../services/assistant/voice_assistant_service.dart';
 import '../../../../services/speech_to_text/speech_to_text_service.dart';
-import '../../../../services/transcription/transcription_analyzer.dart';
+import '../../../../services/tts/tts_service.dart';
 
 class VoiceCommandMode extends StatefulWidget {
   final bool isActive;
@@ -32,16 +36,27 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
   String? _transcription;
   String? _error;
   bool _isInitialized = false;
+  bool _isProcessing = false;
+  AssistantResponse? _response;
 
   late final SpeechToTextService _speechService;
   late final FeedbackService _feedbackService;
+  late final VoiceAssistantService _assistantService;
+  late final TtsService _ttsService;
 
   @override
   void initState() {
     super.initState();
     _speechService = getIt<SpeechToTextService>();
     _feedbackService = getIt<FeedbackService>();
+    _assistantService = getIt<VoiceAssistantService>();
+    _ttsService = getIt<TtsService>();
     _initializeSpeech();
+    _initializeTts();
+  }
+
+  Future<void> _initializeTts() async {
+    await _ttsService.initialize();
   }
 
   Future<void> _initializeSpeech() async {
@@ -68,19 +83,218 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
   @override
   void dispose() {
     _speechService.stopListening();
+    _ttsService.stop();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasTranscription =
-        _transcription != null && _transcription!.isNotEmpty;
 
-    if (hasTranscription && !_isRecording) {
-      return _buildConfirmationView(isDark);
+    if (_isProcessing) {
+      return _buildProcessingView(isDark);
+    }
+    if (_response != null) {
+      return _buildResponseView(isDark);
     }
     return _buildRecordingView(isDark);
+  }
+
+  Widget _buildProcessingView(bool isDark) {
+    final primaryColor =
+        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 64,
+            height: 64,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation(primaryColor),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Procesando...',
+            style: AppTypography.titleSmall.copyWith(color: textColor),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _transcription ?? '',
+            style: AppTypography.bodySmall.copyWith(
+              color: isDark
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondary,
+              fontStyle: FontStyle.italic,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResponseView(bool isDark) {
+    final response = _response!;
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final secondaryColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    final successColor =
+        isDark ? AppColors.accentSecondaryDark : AppColors.accentSecondary;
+
+    final isSuccess = response.action == AssistantAction.createReminder ||
+        response.action == AssistantAction.createNote;
+    final needsClarification =
+        response.action == AssistantAction.clarificationNeeded;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.screenPadding),
+      child: Column(
+        children: [
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: (isSuccess ? successColor : secondaryColor)
+                  .withValues(alpha: 0.15),
+            ),
+            child: Icon(
+              isSuccess
+                  ? Icons.check_rounded
+                  : (needsClarification
+                      ? Icons.help_outline_rounded
+                      : Icons.chat_bubble_outline_rounded),
+              size: 36,
+              color: isSuccess ? successColor : secondaryColor,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            isSuccess
+                ? '¡Listo!'
+                : (needsClarification ? 'Necesito más información' : 'Entendido'),
+            style: AppTypography.titleMedium.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              border: Border.all(
+                color: isDark ? AppColors.outlineDark : AppColors.divider,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 20,
+                      color: secondaryColor,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Respuesta',
+                      style: AppTypography.label.copyWith(color: secondaryColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  response.spokenResponse,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: textColor,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _buildResponseButtons(isDark, isSuccess),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResponseButtons(bool isDark, bool isSuccess) {
+    final primaryColor =
+        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final secondaryColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton.icon(
+            onPressed: _resetAndTryAgain,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              ),
+              elevation: 0,
+            ),
+            icon: Icon(isSuccess ? Icons.add_rounded : Icons.mic_rounded, size: 22),
+            label: Text(
+              isSuccess ? 'Crear otro' : 'Intentar de nuevo',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton(
+            onPressed: () => context.pop(),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: secondaryColor,
+              side: BorderSide(color: secondaryColor.withValues(alpha: 0.3)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              ),
+            ),
+            child: const Text(
+              'Cerrar',
+              style: TextStyle(fontSize: 15),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _resetAndTryAgain() {
+    _feedbackService.light();
+    _ttsService.stop();
+    setState(() {
+      _transcription = null;
+      _response = null;
+      _error = null;
+      _isProcessing = false;
+    });
   }
 
   Widget _buildRecordingView(bool isDark) {
@@ -345,152 +559,6 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     );
   }
 
-  Widget _buildConfirmationView(bool isDark) {
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final secondaryColor =
-        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
-    final successColor =
-        isDark ? AppColors.accentSecondaryDark : AppColors.accentSecondary;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.screenPadding),
-      child: Column(
-        children: [
-          const SizedBox(height: AppSpacing.md),
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: successColor.withValues(alpha: 0.15),
-            ),
-            child: Icon(
-              Icons.check_rounded,
-              size: 36,
-              color: successColor,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            '¡Listo!',
-            style: AppTypography.titleMedium.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Revisa tu recordatorio',
-            style: AppTypography.bodyMedium.copyWith(color: secondaryColor),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              border: Border.all(
-                color: isDark ? AppColors.outlineDark : AppColors.divider,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.format_quote_rounded,
-                      size: 20,
-                      color: secondaryColor,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      'Tu recordatorio',
-                      style: AppTypography.label.copyWith(color: secondaryColor),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  _transcription ?? '',
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: textColor,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          _buildConfirmationButtons(isDark),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConfirmationButtons(bool isDark) {
-    final primaryColor =
-        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
-    final secondaryColor =
-        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton.icon(
-            onPressed: _saveReminder,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              ),
-              elevation: 0,
-            ),
-            icon: const Icon(Icons.check_rounded, size: 22),
-            label: const Text(
-              'Guardar recordatorio',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              _feedbackService.light();
-              setState(() {
-                _transcription = null;
-                _error = null;
-              });
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: secondaryColor,
-              side: BorderSide(color: secondaryColor.withValues(alpha: 0.3)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              ),
-            ),
-            icon: const Icon(Icons.mic_rounded, size: 20),
-            label: const Text(
-              'Volver a grabar',
-              style: TextStyle(fontSize: 15),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Future<void> _toggleRecording() async {
     _feedbackService.medium();
@@ -510,10 +578,12 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     if (_isRecording) {
       await _speechService.stopListening();
       setState(() => _isRecording = false);
+      _processTranscription();
     } else {
       setState(() {
         _isRecording = true;
         _transcription = '';
+        _response = null;
         _error = null;
       });
 
@@ -526,6 +596,7 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
               });
               if (isFinal && text.isNotEmpty) {
                 setState(() => _isRecording = false);
+                _processTranscription();
               }
             }
           },
@@ -562,53 +633,110 @@ class _VoiceCommandModeState extends State<VoiceCommandMode> {
     }
   }
 
-  Future<void> _saveReminder() async {
-    final repository = getIt<ReminderRepository>();
-    final analyzer = getIt<TranscriptionAnalyzer>();
+  Future<void> _processTranscription() async {
+    if (_transcription == null || _transcription!.isEmpty) return;
 
-    // Usar el analizador de transcripciones (local o LLM en el futuro)
-    final analysis = await analyzer.analyzeCommand(_transcription ?? '');
+    setState(() => _isProcessing = true);
 
-    final reminder = Reminder(
-      id: const Uuid().v4(),
-      title: analysis.title,
-      description: _transcription ?? '',
-      scheduledAt: analysis.scheduledAt,
-      type: analysis.type,
-      status: ReminderStatus.pending,
-      importance: analysis.importance,
-      source: ReminderSource.voice,
-      object: analysis.object,
-      location: analysis.location,
-      hasNotification: analysis.hasSchedule,
-      createdAt: DateTime.now(),
-    );
+    try {
+      final response = await _assistantService.process(_transcription!);
 
-    await repository.save(reminder);
-    await _feedbackService.success();
+      if (!mounted) return;
 
-    if (!mounted) return;
+      setState(() {
+        _response = response;
+        _isProcessing = false;
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white),
-            SizedBox(width: AppSpacing.sm),
-            Text('¡Recordatorio creado!'),
-          ],
-        ),
-        backgroundColor: AppColors.accentSecondary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      // Ejecutar acción según respuesta
+      await _executeAction(response);
 
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) context.pop();
-    });
+      // Reproducir respuesta con TTS
+      if (response.spokenResponse.isNotEmpty) {
+        await _ttsService.speak(response.spokenResponse);
+      }
+    } on ApiConnectionException {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo conectar al servidor'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inesperado: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
+
+  Future<void> _executeAction(AssistantResponse response) async {
+    final repository = getIt<ReminderRepository>();
+
+    switch (response.action) {
+      case AssistantAction.createReminder:
+        final data = response.createReminderData!;
+        final reminder = Reminder(
+          id: const Uuid().v4(),
+          title: data.title,
+          description: _transcription ?? '',
+          scheduledAt: data.scheduledAt,
+          type: data.type,
+          status: ReminderStatus.pending,
+          importance: data.importance,
+          source: ReminderSource.voice,
+          object: data.object,
+          location: data.location,
+          hasNotification: data.scheduledAt != null,
+          createdAt: DateTime.now(),
+        );
+        await repository.save(reminder);
+        await _feedbackService.success();
+
+      case AssistantAction.createNote:
+        final data = response.createNoteData!;
+        final note = Reminder(
+          id: const Uuid().v4(),
+          title: data.title,
+          description: _transcription ?? '',
+          scheduledAt: null,
+          type: ReminderType.location,
+          status: ReminderStatus.pending,
+          importance: data.importance,
+          source: ReminderSource.voice,
+          object: data.object,
+          location: data.location,
+          hasNotification: false,
+          createdAt: DateTime.now(),
+        );
+        await repository.save(note);
+        await _feedbackService.success();
+
+      case AssistantAction.clarificationNeeded:
+      case AssistantAction.noAction:
+        _feedbackService.light();
+
+      default:
+        break;
+    }
+  }
+
 }

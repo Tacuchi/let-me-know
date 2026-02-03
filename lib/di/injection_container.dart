@@ -8,6 +8,9 @@ import 'package:let_me_know/features/reminders/application/cubit/reminder_list_c
 import 'package:let_me_know/features/reminders/application/cubit/reminder_summary_cubit.dart';
 import 'package:let_me_know/features/reminders/domain/repositories/reminder_repository.dart';
 import 'package:let_me_know/features/reminders/infrastructure/repositories/reminder_repository_drift_impl.dart';
+import 'package:let_me_know/services/assistant/assistant_api_client.dart';
+import 'package:let_me_know/services/assistant/voice_assistant_service.dart';
+import 'package:let_me_know/services/assistant/voice_assistant_service_impl.dart';
 import 'package:let_me_know/services/notifications/notification_service.dart';
 import 'package:let_me_know/services/notifications/notification_service_impl.dart';
 import 'package:let_me_know/services/query/query_service.dart';
@@ -59,7 +62,18 @@ Future<void> configureDependencies() async {
     () => ReminderRepositoryDriftImpl(getIt()),
   );
 
-  // Query Service (depende de Repository y TranscriptionAnalyzer)
+  // Voice Assistant (Backend LLM) - depende de ReminderRepository
+  getIt.registerLazySingleton<AssistantApiClient>(
+    () => AssistantApiClient(),
+  );
+  getIt.registerLazySingleton<VoiceAssistantService>(
+    () => VoiceAssistantServiceImpl(
+      getIt<AssistantApiClient>(),
+      getIt<ReminderRepository>(),
+    ),
+  );
+
+  // Query Service
   getIt.registerLazySingleton<QueryService>(
     () => QueryServiceImpl(getIt<ReminderRepository>(), getIt<TranscriptionAnalyzer>()),
   );

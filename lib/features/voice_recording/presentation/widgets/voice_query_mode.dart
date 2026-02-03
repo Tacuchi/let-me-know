@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../reminders/domain/entities/reminder.dart';
+import '../../../reminders/domain/repositories/reminder_repository.dart';
+import '../../../../services/assistant/assistant_api_client.dart';
+import '../../../../services/assistant/models/assistant_response.dart';
+import '../../../../services/assistant/voice_assistant_service.dart';
 import '../../../../services/speech_to_text/speech_to_text_service.dart';
-import '../../../../services/query/query_service.dart';
 import '../../../../services/tts/tts_service.dart';
 
 class VoiceQueryMode extends StatefulWidget {
@@ -27,13 +30,14 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
   String? _error;
   bool _isInitialized = false;
   bool _isProcessing = false;
-  QueryResult? _queryResult;
+  AssistantResponse? _response;
   List<Reminder> _upcomingAlerts = [];
   bool _alertsLoaded = false;
 
   late final SpeechToTextService _speechService;
-  late final QueryService _queryService;
+  late final VoiceAssistantService _assistantService;
   late final TtsService _ttsService;
+  late final ReminderRepository _reminderRepository;
   bool _isSpeaking = false;
 
   // Colores distintivos para modo consulta (violeta/morado)
@@ -46,8 +50,9 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
   void initState() {
     super.initState();
     _speechService = getIt<SpeechToTextService>();
-    _queryService = getIt<QueryService>();
+    _assistantService = getIt<VoiceAssistantService>();
     _ttsService = getIt<TtsService>();
+    _reminderRepository = getIt<ReminderRepository>();
     _initializeSpeech();
     _initializeTts();
   }
@@ -67,7 +72,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
 
   Future<void> _loadUpcomingAlerts() async {
     try {
-      final alerts = await _queryService.getUpcomingAlerts();
+      final alerts = await _reminderRepository.getUpcomingAlerts();
       if (mounted) {
         setState(() {
           _upcomingAlerts = alerts;
@@ -119,7 +124,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
   }
 
   Widget _buildContent(bool isDark) {
-    if (_queryResult != null) {
+    if (_response != null) {
       return _buildResultView(isDark);
     }
     if (_isProcessing) {
@@ -486,12 +491,13 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
   }
 
   Widget _buildResultView(bool isDark) {
-    final result = _queryResult!;
+    final response = _response!;
     final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
     final secondaryColor =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final primaryColor = isDark ? _queryPrimaryDark : _queryPrimary;
     final bgColor = isDark ? AppColors.bgSecondaryDark : Colors.white;
+
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.screenPadding),
@@ -507,7 +513,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
               color: primaryColor.withValues(alpha: 0.15),
             ),
             child: Icon(
-              _getResultIcon(result.type),
+              _getResultIcon(response.action),
               size: 36,
               color: primaryColor,
             ),
@@ -541,7 +547,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  result.response,
+                  response.spokenResponse,
                   style: AppTypography.bodyLarge.copyWith(
                     color: textColor,
                     height: 1.5,
@@ -550,18 +556,6 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
               ],
             ),
           ),
-
-          // Items relacionados
-          if (result.hasRelatedItems) ...[
-            const SizedBox(height: AppSpacing.lg),
-            _buildRelatedItems(result.relatedItems!, isDark),
-          ],
-
-          // Alertas próximas
-          if (result.hasUpcomingAlerts) ...[
-            const SizedBox(height: AppSpacing.lg),
-            _buildUpcomingAlerts(result.upcomingAlerts!, isDark),
-          ],
 
           const SizedBox(height: AppSpacing.xl),
 
@@ -574,7 +568,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
                 height: 56,
                 margin: const EdgeInsets.only(right: AppSpacing.sm),
                 child: OutlinedButton(
-                  onPressed: _isSpeaking ? _stopSpeaking : () => _speakResponse(result.response),
+                  onPressed: _isSpeaking ? _stopSpeaking : () => _speakResponse(response.spokenResponse),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: BorderSide(color: primaryColor),
@@ -627,121 +621,6 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
     );
   }
 
-  Widget _buildRelatedItems(List<Reminder> items, bool isDark) {
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final secondaryColor =
-        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final bgColor = isDark ? AppColors.bgSecondaryDark : Colors.white;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.list_alt_rounded, size: 18, color: secondaryColor),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              'Encontrado',
-              style: AppTypography.label.copyWith(color: secondaryColor),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        ...items.map((item) => Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                border: Border.all(
-                  color: isDark ? AppColors.outlineDark : AppColors.divider,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: textColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (item.location != null) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        Icon(Icons.place_outlined,
-                            size: 14, color: AppColors.reminderLocation),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.location!,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.reminderLocation,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            )),
-      ],
-    );
-  }
-
-  Widget _buildUpcomingAlerts(List<Reminder> alerts, bool isDark) {
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final warningColor = AppColors.warning;
-    final bgColor = warningColor.withValues(alpha: 0.1);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: warningColor.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.notifications_active_rounded,
-                  size: 18, color: warningColor),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Próximos recordatorios',
-                style: AppTypography.label.copyWith(
-                  color: warningColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ...alerts.map((alert) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                child: Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, size: 14, color: warningColor),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        '${alert.title} - ${_formatTime(alert.scheduledAt)}',
-                        style: AppTypography.bodySmall.copyWith(color: textColor),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-
   String _formatTime(DateTime? dt) {
     if (dt == null) return '';
     final hour = dt.hour;
@@ -751,19 +630,14 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
     return '$displayHour:$minute $period';
   }
 
-  IconData _getResultIcon(QueryType type) {
-    switch (type) {
-      case QueryType.locationQuery:
-        return Icons.place_rounded;
-      case QueryType.reminderQuery:
-        return Icons.event_note_rounded;
-      case QueryType.scheduleQuery:
-        return Icons.schedule_rounded;
-      case QueryType.notAQuery:
-        return Icons.info_outline_rounded;
-      case QueryType.notUnderstood:
-        return Icons.help_outline_rounded;
-    }
+  IconData _getResultIcon(AssistantAction action) {
+    return switch (action) {
+      AssistantAction.queryResponse => Icons.chat_bubble_outline_rounded,
+      AssistantAction.completeReminder => Icons.check_circle_rounded,
+      AssistantAction.deleteReminder => Icons.delete_rounded,
+      AssistantAction.clarificationNeeded => Icons.help_outline_rounded,
+      _ => Icons.info_outline_rounded,
+    };
   }
 
   void _resetQuery() {
@@ -771,7 +645,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
     _ttsService.stop();
     setState(() {
       _transcription = null;
-      _queryResult = null;
+      _response = null;
       _isProcessing = false;
       _isSpeaking = false;
     });
@@ -817,7 +691,7 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
       setState(() {
         _isRecording = true;
         _transcription = '';
-        _queryResult = null;
+        _response = null;
         _error = null;
       });
 
@@ -867,25 +741,63 @@ class _VoiceQueryModeState extends State<VoiceQueryMode> {
     setState(() => _isProcessing = true);
 
     try {
-      final result = await _queryService.processQuery(_transcription!);
+      final response = await _assistantService.process(_transcription!);
+
+      if (!mounted) return;
+
+      setState(() {
+        _response = response;
+        _isProcessing = false;
+      });
+
+      // Ejecutar acción si es necesario
+      await _executeAction(response);
+
+      // Leer la respuesta automáticamente
+      if (response.spokenResponse.isNotEmpty) {
+        _speakResponse(response.spokenResponse);
+      }
+    } on ApiConnectionException {
       if (mounted) {
         setState(() {
-          _queryResult = result;
           _isProcessing = false;
+          _response = AssistantResponse(
+            action: AssistantAction.noAction,
+            spokenResponse: 'No se pudo conectar al servidor. Intenta de nuevo.',
+          );
         });
-        // Leer la respuesta automáticamente
-        _speakResponse(result.response);
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isProcessing = false;
-          _queryResult = QueryResult(
-            type: QueryType.notUnderstood,
-            response: 'Ocurrió un error al procesar tu consulta. Intenta de nuevo.',
+          _response = AssistantResponse(
+            action: AssistantAction.noAction,
+            spokenResponse: 'Ocurrió un error al procesar tu consulta. Intenta de nuevo.',
           );
         });
       }
+    }
+  }
+
+  Future<void> _executeAction(AssistantResponse response) async {
+    switch (response.action) {
+      case AssistantAction.completeReminder:
+        final data = response.completeReminderData;
+        if (data != null) {
+          await _reminderRepository.markAsCompleted(data.reminderId);
+          HapticFeedback.mediumImpact();
+        }
+
+      case AssistantAction.deleteReminder:
+        final data = response.deleteReminderData;
+        if (data != null) {
+          await _reminderRepository.delete(data.reminderId);
+          HapticFeedback.mediumImpact();
+        }
+
+      default:
+        break;
     }
   }
 }
