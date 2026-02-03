@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/constants.dart';
+import '../../../../di/injection_container.dart';
+import '../../../../services/tts/tts_service.dart';
 import '../../application/cubit/reminder_detail_cubit.dart';
 import '../../application/cubit/reminder_detail_state.dart';
 import '../../domain/entities/reminder.dart';
@@ -25,17 +27,27 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
   Timer? _countdownTimer;
   Duration _timeRemaining = Duration.zero;
   bool _isTimeUp = false;
+  bool _isSpeaking = false;
+
+  late final TtsService _ttsService;
+
+  @override
+  void initState() {
+    super.initState();
+    _ttsService = getIt<TtsService>();
+  }
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _ttsService.stop();
     super.dispose();
   }
 
   void _startCountdown(DateTime scheduledAt) {
     _countdownTimer?.cancel();
     _updateTimeRemaining(scheduledAt);
-    
+
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateTimeRemaining(scheduledAt);
     });
@@ -44,7 +56,7 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
   void _updateTimeRemaining(DateTime scheduledAt) {
     final now = DateTime.now();
     final diff = scheduledAt.difference(now);
-    
+
     setState(() {
       if (diff.isNegative) {
         _timeRemaining = Duration.zero;
@@ -59,13 +71,74 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
 
   String _formatCountdown(Duration duration) {
     if (duration.inDays > 0) {
-      return '${duration.inDays}d ${duration.inHours.remainder(24)}h';
+      final hours = duration.inHours.remainder(24);
+      return '${duration.inDays} día${duration.inDays > 1 ? 's' : ''} y $hours hora${hours != 1 ? 's' : ''}';
     } else if (duration.inHours > 0) {
-      return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m ${duration.inSeconds.remainder(60)}s';
+      final minutes = duration.inMinutes.remainder(60);
+      return '${duration.inHours}h ${minutes}min';
     } else if (duration.inMinutes > 0) {
-      return '${duration.inMinutes}:${duration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
+      return '${duration.inMinutes} minuto${duration.inMinutes != 1 ? 's' : ''}';
     } else {
-      return '${duration.inSeconds}s';
+      return '${duration.inSeconds} segundo${duration.inSeconds != 1 ? 's' : ''}';
+    }
+  }
+
+  Future<void> _speakReminder(Reminder reminder) async {
+    if (_isSpeaking) {
+      await _ttsService.stop();
+      setState(() => _isSpeaking = false);
+      return;
+    }
+
+    setState(() => _isSpeaking = true);
+
+    final buffer = StringBuffer();
+    buffer.write(reminder.title);
+
+    if (reminder.description.isNotEmpty) {
+      buffer.write('. ${reminder.description}');
+    }
+
+    if (reminder.scheduledAt != null) {
+      final dateStr = _formatDateForSpeech(reminder.scheduledAt!);
+      final timeStr = DateFormat.Hm('es_ES').format(reminder.scheduledAt!);
+      buffer.write('. Programado para $dateStr a las $timeStr');
+    }
+
+    if (reminder.isNote) {
+      if (reminder.object != null && reminder.object!.isNotEmpty) {
+        buffer.write('. Objeto: ${reminder.object}');
+      }
+      if (reminder.location != null && reminder.location!.isNotEmpty) {
+        buffer.write('. Ubicación: ${reminder.location}');
+      }
+    }
+
+    await _ttsService.speak(buffer.toString());
+
+    // Esperar a que termine de hablar
+    await Future.delayed(const Duration(milliseconds: 500));
+    while (_ttsService.isSpeaking) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    if (mounted) {
+      setState(() => _isSpeaking = false);
+    }
+  }
+
+  String _formatDateForSpeech(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    if (dateOnly == today) {
+      return 'hoy';
+    } else if (dateOnly == tomorrow) {
+      return 'mañana';
+    } else {
+      return DateFormat('EEEE d \'de\' MMMM', 'es_ES').format(date);
     }
   }
 
@@ -75,20 +148,19 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
       listener: (context, state) {
         switch (state) {
           case ReminderDetailCompleted():
-            _showSnackBar(context, '✓ Recordatorio completado');
+            _showSnackBar(context, 'Recordatorio completado');
             context.pop();
           case ReminderDetailDeleted():
             _showSnackBar(context, 'Recordatorio eliminado');
             context.pop();
           case ReminderDetailSnoozed(:final newTime):
             final timeStr = DateFormat.Hm('es_ES').format(newTime);
-            _showSnackBar(context, '⏰ Pospuesto hasta las $timeStr');
+            _showSnackBar(context, 'Te recordaré a las $timeStr');
             context.pop();
           case ReminderDetailError(:final message):
             _showSnackBar(context, message, isError: true);
           case ReminderDetailLoaded(:final reminder):
-            // Iniciar countdown si tiene fecha programada
-            if (reminder.scheduledAt != null && 
+            if (reminder.scheduledAt != null &&
                 reminder.status != ReminderStatus.completed &&
                 !reminder.isNote) {
               _startCountdown(reminder.scheduledAt!);
@@ -98,9 +170,32 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
         }
       },
       builder: (context, state) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
         return Scaffold(
           backgroundColor: AppColors.bgPrimaryAdaptive(Theme.of(context).brightness),
-          appBar: _buildAppBar(context, state),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                size: 28,
+              ),
+              onPressed: () => context.pop(),
+              tooltip: 'Volver',
+            ),
+            title: Text(
+              'Volver',
+              style: TextStyle(
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+                fontSize: 18,
+              ),
+            ),
+            titleSpacing: 0,
+          ),
           body: _buildBody(context, state),
         );
       },
@@ -118,41 +213,6 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, ReminderDetailState state) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: IconButton(
-        icon: Icon(
-          Icons.arrow_back_rounded,
-          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-        ),
-        onPressed: () => context.pop(),
-        tooltip: 'Volver',
-      ),
-      title: Text(
-        'Detalle',
-        style: TextStyle(
-          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      actions: [
-        if (state is ReminderDetailLoaded)
-          IconButton(
-            icon: Icon(
-              Icons.delete_outline_rounded,
-              color: AppColors.error,
-            ),
-            onPressed: () => _showDeleteConfirmation(context),
-            tooltip: 'Eliminar',
-          ),
-      ],
-    );
-  }
-
   Widget _buildBody(BuildContext context, ReminderDetailState state) {
     return switch (state) {
       ReminderDetailLoading() => const Center(
@@ -166,60 +226,81 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
   }
 
   Widget _buildNotFound(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off_rounded,
-            size: 80,
-            color: AppColors.textHelper,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Recordatorio no encontrado',
-            style: TextStyle(
-              fontSize: 18,
-              color: AppColors.textSecondary,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 64,
+              color: AppColors.textHelper,
             ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => context.pop(),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Volver'),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              'No se encontró el recordatorio',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: () => context.pop(),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('Volver', style: TextStyle(fontSize: 18)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildError(BuildContext context, String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline_rounded,
-            size: 80,
-            color: AppColors.error,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 18,
-              color: AppColors.textSecondary,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: AppColors.error,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => context.read<ReminderDetailCubit>().reload(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: () => context.read<ReminderDetailCubit>().reload(),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reintentar', style: TextStyle(fontSize: 18)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -230,104 +311,44 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     final isCompleted = reminder.status == ReminderStatus.completed;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Icono grande del tipo
-          _buildTypeIcon(reminder, isDark),
-          const SizedBox(height: 24),
+          // Card principal: Tipo + Título
+          _buildHeaderCard(reminder, isDark),
+          const SizedBox(height: 16),
 
-          // Título
-          Text(
-            reminder.title,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
+          // Card de fecha/hora o ubicación
+          if (isNote)
+            _buildLocationCard(reminder, isDark)
+          else if (reminder.scheduledAt != null)
+            _buildDateTimeCard(reminder, isDark),
 
-          // Badge de tipo
-          _buildTypeBadge(reminder, isDark),
+          // Card de descripción con TTS
+          if (reminder.description.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildDescriptionCard(reminder, isDark),
+          ],
+
           const SizedBox(height: 32),
 
-          // Información según tipo
-          if (isNote)
-            _buildNoteInfo(reminder, isDark)
-          else
-            _buildReminderInfo(reminder, isDark),
-
-          // Descripción
-          if (reminder.description.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _buildDescription(reminder, isDark),
-          ],
-
-          const SizedBox(height: 40),
-
           // Botones de acción
-          if (!isCompleted) _buildActionButtons(context, reminder, isDark),
-          if (isCompleted) _buildCompletedBanner(isDark),
+          if (isCompleted)
+            _buildCompletedBanner(isDark)
+          else
+            _buildActionButtons(context, reminder, isDark),
+
+          // Link de eliminar
+          const SizedBox(height: 24),
+          _buildDeleteLink(context, isDark),
         ],
       ),
     );
   }
 
-  Widget _buildTypeIcon(Reminder reminder, bool isDark) {
+  Widget _buildHeaderCard(Reminder reminder, bool isDark) {
     final typeColor = reminder.type.color;
-
-    return Center(
-      child: Container(
-        width: 100,
-        height: 100,
-        decoration: BoxDecoration(
-          color: typeColor.withValues(alpha: isDark ? 0.2 : 0.15),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: typeColor.withValues(alpha: 0.3),
-            width: 2,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            reminder.type.emoji,
-            style: const TextStyle(fontSize: 48),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeBadge(Reminder reminder, bool isDark) {
-    final typeColor = reminder.type.color;
-
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: typeColor.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          reminder.type.displayName,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: typeColor,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReminderInfo(Reminder reminder, bool isDark) {
-    final isCompleted = reminder.status == ReminderStatus.completed;
-    final showCountdown = reminder.scheduledAt != null && 
-        !isCompleted && 
-        !reminder.isOverdue;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -335,277 +356,344 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
         color: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? AppColors.dividerDark : AppColors.divider,
-          width: 1,
+          color: typeColor.withValues(alpha: 0.3),
+          width: 2,
         ),
-      ),
-      child: Column(
-        children: [
-          // Countdown en tiempo real
-          if (showCountdown) ...[
-            _buildCountdownSection(reminder, isDark),
-            const Divider(height: 24),
-          ],
-
-          // Fecha y hora
-          if (reminder.scheduledAt != null)
-            _buildInfoRow(
-              icon: Icons.calendar_today_rounded,
-              label: 'Fecha',
-              value: _formatDate(reminder.scheduledAt!),
-              isDark: isDark,
-            ),
-          if (reminder.scheduledAt != null) ...[
-            const Divider(height: 24),
-            _buildInfoRow(
-              icon: Icons.access_time_rounded,
-              label: 'Hora',
-              value: DateFormat.Hms('es_ES').format(reminder.scheduledAt!),
-              isDark: isDark,
-              valueStyle: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-              ),
-            ),
-          ],
-          const Divider(height: 24),
-
-          // Importancia
-          _buildInfoRow(
-            icon: Icons.flag_rounded,
-            label: 'Importancia',
-            value: reminder.importance.displayName,
-            valueColor: _getImportanceColor(reminder.importance),
-            isDark: isDark,
-          ),
-          const Divider(height: 24),
-
-          // Notificación
-          _buildInfoRow(
-            icon: reminder.hasNotification
-                ? Icons.notifications_active_rounded
-                : Icons.notifications_off_rounded,
-            label: 'Notificación',
-            value: reminder.hasNotification ? 'Activa' : 'Desactivada',
-            valueColor: reminder.hasNotification ? AppColors.success : AppColors.textHelper,
-            isDark: isDark,
-          ),
-
-          // Estado vencido
-          if (reminder.isOverdue) ...[
-            const Divider(height: 24),
-            _buildInfoRow(
-              icon: Icons.warning_rounded,
-              label: 'Estado',
-              value: 'Vencido',
-              valueColor: AppColors.error,
-              isDark: isDark,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCountdownSection(Reminder reminder, bool isDark) {
-    final typeColor = reminder.type.color;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            typeColor.withValues(alpha: 0.15),
-            typeColor.withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _isTimeUp ? Icons.alarm_on_rounded : Icons.timer_rounded,
-                color: _isTimeUp ? AppColors.warning : typeColor,
-                size: 28,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _isTimeUp ? '¡Ahora!' : 'Faltan',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: Text(
-              _isTimeUp ? '⏰' : _formatCountdown(_timeRemaining),
-              key: ValueKey(_isTimeUp ? 'timeup' : _timeRemaining.inSeconds),
-              style: TextStyle(
-                fontSize: _isTimeUp ? 48 : 36,
-                fontWeight: FontWeight.bold,
-                color: _isTimeUp ? AppColors.warning : typeColor,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-          if (!_isTimeUp && _timeRemaining.inMinutes < 5) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '¡Casi es hora!',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.warning,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoteInfo(Reminder reminder, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.dividerDark : AppColors.divider,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          // Objeto
-          if (reminder.object != null && reminder.object!.isNotEmpty)
-            _buildInfoRow(
-              icon: Icons.category_rounded,
-              label: 'Objeto',
-              value: reminder.object!,
-              isDark: isDark,
-              valueStyle: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-              ),
-            ),
-          if (reminder.object != null &&
-              reminder.object!.isNotEmpty &&
-              reminder.location != null &&
-              reminder.location!.isNotEmpty)
-            const Divider(height: 24),
-
-          // Ubicación
-          if (reminder.location != null && reminder.location!.isNotEmpty)
-            _buildInfoRow(
-              icon: Icons.place_rounded,
-              label: 'Ubicación',
-              value: reminder.location!,
-              isDark: isDark,
-              valueStyle: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.reminderLocation,
-              ),
-            ),
-
-          const Divider(height: 24),
-
-          // Fecha de creación
-          _buildInfoRow(
-            icon: Icons.access_time_rounded,
-            label: 'Guardado',
-            value: _formatDate(reminder.createdAt),
-            isDark: isDark,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    required bool isDark,
-    Color? valueColor,
-    TextStyle? valueStyle,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 24,
-          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
-        ),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: valueStyle ??
-              TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: valueColor ??
-                    (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
-              ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescription(Reminder reminder, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: (isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary)
-            .withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Descripción',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+          // Chip de tipo
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: typeColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: typeColor.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Text(
+              reminder.type.displayName,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: typeColor,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+
+          // Título grande
           Text(
-            reminder.description,
+            reminder.title,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
               color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+              height: 1.3,
             ),
           ),
+
+          // Indicador de importancia si es alta
+          if (reminder.importance == ReminderImportance.high) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.priority_high_rounded,
+                  size: 20,
+                  color: AppColors.error,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Importante',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildDateTimeCard(Reminder reminder, bool isDark) {
+    final scheduledAt = reminder.scheduledAt!;
+    final isOverdue = reminder.isOverdue;
+    final showCountdown = !isOverdue && reminder.status != ReminderStatus.completed;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
+        borderRadius: BorderRadius.circular(16),
+        border: isOverdue
+            ? Border.all(color: AppColors.error.withValues(alpha: 0.5), width: 2)
+            : null,
+      ),
+      child: Column(
+        children: [
+          // Fecha y hora principal
+          Row(
+            children: [
+              Icon(
+                Icons.schedule_rounded,
+                size: 28,
+                color: isOverdue ? AppColors.error : AppColors.accentPrimary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatDateDisplay(scheduledAt),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      DateFormat.Hm('es_ES').format(scheduledAt),
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: isOverdue ? AppColors.error : AppColors.accentPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Countdown o estado vencido
+          if (showCountdown && !_isTimeUp) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.accentPrimary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 22,
+                    color: AppColors.accentPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Faltan ${_formatCountdown(_timeRemaining)}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accentPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (isOverdue) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.warning_rounded,
+                    size: 22,
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Recordatorio vencido',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationCard(Reminder reminder, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          if (reminder.object != null && reminder.object!.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.category_rounded,
+                  size: 24,
+                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Objeto',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                reminder.object!,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+          if (reminder.object != null &&
+              reminder.object!.isNotEmpty &&
+              reminder.location != null &&
+              reminder.location!.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Divider(height: 1),
+            ),
+          if (reminder.location != null && reminder.location!.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.place_rounded,
+                  size: 24,
+                  color: AppColors.reminderLocation,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Ubicación',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                reminder.location!,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.reminderLocation,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionCard(Reminder reminder, bool isDark) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _speakReminder(reminder),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
+            borderRadius: BorderRadius.circular(16),
+            border: _isSpeaking
+                ? Border.all(color: AppColors.accentPrimary, width: 2)
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    _isSpeaking ? Icons.volume_up_rounded : Icons.volume_up_outlined,
+                    size: 24,
+                    color: _isSpeaking
+                        ? AppColors.accentPrimary
+                        : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondary),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Descripción',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _isSpeaking
+                          ? AppColors.accentPrimary.withValues(alpha: 0.15)
+                          : (isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _isSpeaking ? 'Escuchando...' : 'Tocar para escuchar',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _isSpeaking
+                            ? AppColors.accentPrimary
+                            : (isDark ? AppColors.textHelperDark : AppColors.textHelper),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                reminder.description,
+                style: TextStyle(
+                  fontSize: 18,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -617,22 +705,22 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Botón principal: Completar (para recordatorios)
+        // Botón principal: Completar
         if (!isNote)
           SizedBox(
-            height: 56,
+            height: 60,
             child: FilledButton.icon(
               onPressed: () {
                 HapticFeedback.mediumImpact();
                 cubit.markAsCompleted();
               },
-              icon: const Icon(Icons.check_rounded, size: 24),
+              icon: const Icon(Icons.check_rounded, size: 26),
               label: const Text(
-                'Marcar como completado',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                'Completar',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accentPrimary,
+                backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -641,23 +729,23 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
             ),
           ),
 
-        // Botón de posponer (solo para recordatorios)
+        // Botón de posponer
         if (!isNote && reminder.scheduledAt != null) ...[
           const SizedBox(height: 12),
           SizedBox(
-            height: 56,
+            height: 60,
             child: OutlinedButton.icon(
               onPressed: () => _showSnoozeOptions(context),
-              icon: const Icon(Icons.snooze_rounded, size: 24),
+              icon: const Icon(Icons.snooze_rounded, size: 26),
               label: const Text(
-                'Posponer',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                'Recordar más tarde',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
                 side: BorderSide(
                   color: isDark ? AppColors.dividerDark : AppColors.divider,
-                  width: 1.5,
+                  width: 2,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -667,20 +755,26 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
           ),
         ],
 
-        // Botón de eliminar
+        // Botón de editar
         const SizedBox(height: 12),
         SizedBox(
-          height: 56,
+          height: 60,
           child: OutlinedButton.icon(
-            onPressed: () => _showDeleteConfirmation(context),
-            icon: const Icon(Icons.delete_outline_rounded, size: 24),
+            onPressed: () {
+              // TODO: Implementar edición
+              _showSnackBar(context, 'Edición próximamente disponible');
+            },
+            icon: const Icon(Icons.edit_rounded, size: 26),
             label: const Text(
-              'Eliminar',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              'Editar',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.error,
-              side: BorderSide(color: AppColors.error.withValues(alpha: 0.5), width: 1.5),
+              foregroundColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+              side: BorderSide(
+                color: isDark ? AppColors.dividerDark : AppColors.divider,
+                width: 2,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -695,7 +789,7 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.completed.withValues(alpha: 0.3),
+        color: AppColors.success.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.success, width: 2),
       ),
@@ -707,7 +801,7 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
           Text(
             'Completado',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.success,
             ),
@@ -717,13 +811,35 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     );
   }
 
+  Widget _buildDeleteLink(BuildContext context, bool isDark) {
+    return Center(
+      child: TextButton(
+        onPressed: () => _showDeleteConfirmation(context),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.error.withValues(alpha: 0.8),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        ),
+        child: const Text(
+          'Eliminar recordatorio',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showSnoozeOptions(BuildContext context) {
     final cubit = context.read<ReminderDetailCubit>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
@@ -733,33 +849,37 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                '⏰ Posponer recordatorio',
+                '¿Cuándo te recuerdo?',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               _buildSnoozeOption(
                 context: ctx,
-                label: '5 minutos',
+                label: 'En 5 minutos',
                 duration: const Duration(minutes: 5),
                 cubit: cubit,
+                isDark: isDark,
               ),
               const SizedBox(height: 12),
               _buildSnoozeOption(
                 context: ctx,
-                label: '15 minutos',
+                label: 'En 15 minutos',
                 duration: const Duration(minutes: 15),
                 cubit: cubit,
+                isDark: isDark,
               ),
               const SizedBox(height: 12),
               _buildSnoozeOption(
                 context: ctx,
-                label: '1 hora',
+                label: 'En 1 hora',
                 duration: const Duration(hours: 1),
                 cubit: cubit,
+                isDark: isDark,
               ),
               const SizedBox(height: 12),
               _buildSnoozeOption(
@@ -767,6 +887,7 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
                 label: 'Mañana a esta hora',
                 duration: const Duration(days: 1),
                 cubit: cubit,
+                isDark: isDark,
               ),
             ],
           ),
@@ -780,9 +901,10 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     required String label,
     required Duration duration,
     required ReminderDetailCubit cubit,
+    required bool isDark,
   }) {
     return SizedBox(
-      height: 52,
+      height: 56,
       child: OutlinedButton(
         onPressed: () {
           Navigator.pop(context);
@@ -790,13 +912,18 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
           cubit.snooze(duration);
         },
         style: OutlinedButton.styleFrom(
+          foregroundColor: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+          side: BorderSide(
+            color: isDark ? AppColors.dividerDark : AppColors.divider,
+            width: 1.5,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 18),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
         ),
       ),
     );
@@ -804,46 +931,71 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
 
   void _showDeleteConfirmation(BuildContext context) {
     final cubit = context.read<ReminderDetailCubit>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('¿Eliminar recordatorio?'),
-        content: const Text(
-          'Esta acción no se puede deshacer.',
-          style: TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+        backgroundColor: isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          '¿Eliminar recordatorio?',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              HapticFeedback.mediumImpact();
-              cubit.delete();
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
+        ),
+        content: Text(
+          'Esta acción no se puede deshacer.',
+          style: TextStyle(
+            fontSize: 18,
+            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          SizedBox(
+            height: 48,
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+              ),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                ),
+              ),
             ),
-            child: const Text('Eliminar'),
+          ),
+          SizedBox(
+            height: 48,
+            child: FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                HapticFeedback.mediumImpact();
+                cubit.delete();
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.error,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+              ),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Color _getImportanceColor(ReminderImportance importance) {
-    return switch (importance) {
-      ReminderImportance.high => AppColors.error,
-      ReminderImportance.medium => AppColors.warning,
-      ReminderImportance.low => AppColors.success,
-      ReminderImportance.info => AppColors.textHelper,
-    };
-  }
-
-  String _formatDate(DateTime date) {
+  String _formatDateDisplay(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
@@ -854,7 +1006,9 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     } else if (dateOnly == tomorrow) {
       return 'Mañana';
     } else {
-      return DateFormat('EEEE d MMM', 'es_ES').format(date);
+      // Capitalizar primera letra
+      final formatted = DateFormat('EEEE d MMM', 'es_ES').format(date);
+      return formatted[0].toUpperCase() + formatted.substring(1);
     }
   }
 }
