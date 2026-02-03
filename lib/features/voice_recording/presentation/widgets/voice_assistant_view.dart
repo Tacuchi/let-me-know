@@ -85,7 +85,7 @@ class _VoiceAssistantViewState extends State<VoiceAssistantView> {
   @override
   void dispose() {
     _speechService.stopListening();
-    _ttsService.stop();
+    // NO detenemos el TTS aquí para que termine de hablar al navegar a Home
     super.dispose();
   }
 
@@ -683,16 +683,49 @@ class _VoiceAssistantViewState extends State<VoiceAssistantView> {
       final isSuccessAction = _isSuccessAction(response.action);
 
       if (isSuccessAction) {
-        // Ejecutar acción
+        // Primero mostrar toast y reproducir TTS (antes de programar alarma)
+        if (mounted) {
+          // Iniciar TTS primero
+          _ttsService.speak(response.spokenResponse);
+          
+          // Mostrar toast
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      response.spokenResponse,
+                      style: const TextStyle(fontSize: 15),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.accentSecondary,
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              margin: const EdgeInsets.all(AppSpacing.md),
+            ),
+          );
+          
+          // Esperar un momento para que el TTS inicie
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+
+        // Luego ejecutar acción (programar alarma)
         await _executeAction(response);
 
         // Cerrar pantalla y navegar a Home
         if (mounted) {
           context.pop();
           context.goNamed(AppRoutes.homeName);
-
-          // Mostrar toast con TTS
-          _showSuccessToast(response.spokenResponse);
         }
       } else {
         // Para consultas y clarificaciones, mostrar en la misma pantalla

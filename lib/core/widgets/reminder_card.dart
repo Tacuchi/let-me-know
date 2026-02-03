@@ -474,9 +474,13 @@ class _ReminderCardState extends State<ReminderCard>
 
     final hour = dateTime.hour;
     final minute = dateTime.minute.toString().padLeft(2, '0');
+    final second = dateTime.second.toString().padLeft(2, '0');
     final period = hour >= 12 ? 'PM' : 'AM';
     final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    final time = '$displayHour:$minute $period';
+    // Mostrar segundos solo si no son cero
+    final time = dateTime.second == 0
+        ? '$displayHour:$minute $period'
+        : '$displayHour:$minute:$second $period';
 
     if (date == today) {
       return 'Hoy, $time';

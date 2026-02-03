@@ -7,6 +7,7 @@ import 'package:let_me_know/features/reminders/domain/entities/reminder_status.d
 import 'package:let_me_know/features/reminders/domain/entities/reminder_type.dart';
 import 'package:let_me_know/features/reminders/domain/repositories/reminder_repository.dart';
 import 'package:let_me_know/di/injection_container.dart';
+import 'package:let_me_know/services/alarm/alarm_service.dart';
 import 'package:let_me_know/services/notifications/notification_service.dart';
 
 class ReminderRepositoryDriftImpl implements ReminderRepository {
@@ -85,6 +86,16 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
     final row =
         await (_db.select(_db.reminders)
               ..where((t) => t.id.equals(id))
+              ..limit(1))
+            .getSingleOrNull();
+    return row == null ? null : _toEntity(row);
+  }
+
+  @override
+  Future<Reminder?> getByNotificationId(int notificationId) async {
+    final row =
+        await (_db.select(_db.reminders)
+              ..where((t) => t.notificationId.equals(notificationId))
               ..limit(1))
             .getSingleOrNull();
     return row == null ? null : _toEntity(row);
@@ -174,17 +185,27 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
         .insertOnConflictUpdate(_toCompanion(reminder));
 
     if (reminder.scheduledAt != null && reminder.hasNotification) {
-      final notificationService = getIt<NotificationService>();
-      await notificationService.scheduleNotification(reminder);
+      final alarmService = getIt<AlarmService>();
+      
+      if (alarmService.shouldUseAlarm(reminder)) {
+        await alarmService.scheduleAlarm(reminder);
+      } else {
+        final notificationService = getIt<NotificationService>();
+        await notificationService.scheduleNotification(reminder);
+      }
     }
   }
 
   @override
   Future<void> delete(String id) async {
     final reminder = await getById(id);
-    if (reminder?.notificationId != null) {
+    if (reminder != null && reminder.notificationId != null) {
+      final alarmService = getIt<AlarmService>();
       final notificationService = getIt<NotificationService>();
-      await notificationService.cancelNotification(reminder!.notificationId!);
+      
+      // Cancelar tanto alarma como notificación
+      await alarmService.cancelAlarm(reminder.notificationId!);
+      await notificationService.cancelNotification(reminder.notificationId!);
     }
 
     await (_db.delete(_db.reminders)..where((t) => t.id.equals(id))).go();
@@ -193,9 +214,13 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
   @override
   Future<void> markAsCompleted(String id) async {
     final reminder = await getById(id);
-    if (reminder?.notificationId != null) {
+    if (reminder != null && reminder.notificationId != null) {
+      final alarmService = getIt<AlarmService>();
       final notificationService = getIt<NotificationService>();
-      await notificationService.cancelNotification(reminder!.notificationId!);
+      
+      // Cancelar tanto alarma como notificación
+      await alarmService.cancelAlarm(reminder.notificationId!);
+      await notificationService.cancelNotification(reminder.notificationId!);
     }
 
     await (_db.update(_db.reminders)..where((t) => t.id.equals(id))).write(
@@ -212,9 +237,11 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
     final reminder = await getById(id);
     if (reminder == null) return;
 
-    // Cancelar notificación actual si existe
+    // Cancelar alarma/notificación actual si existe
     if (reminder.notificationId != null) {
+      final alarmService = getIt<AlarmService>();
       final notificationService = getIt<NotificationService>();
+      await alarmService.cancelAlarm(reminder.notificationId!);
       await notificationService.cancelNotification(reminder.notificationId!);
     }
 
@@ -229,12 +256,17 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
       ),
     );
 
-    // Reprogramar notificación con nuevo tiempo
+    // Reprogramar alarma/notificación con nuevo tiempo
     if (reminder.hasNotification) {
-      final notificationService = getIt<NotificationService>();
-      await notificationService.scheduleNotification(
-        reminder.copyWith(scheduledAt: newTime),
-      );
+      final alarmService = getIt<AlarmService>();
+      final updatedReminder = reminder.copyWith(scheduledAt: newTime);
+      
+      if (alarmService.shouldUseAlarm(updatedReminder)) {
+        await alarmService.scheduleAlarm(updatedReminder);
+      } else {
+        final notificationService = getIt<NotificationService>();
+        await notificationService.scheduleNotification(updatedReminder);
+      }
     }
   }
 

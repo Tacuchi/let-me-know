@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:alarm/alarm.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,7 +10,10 @@ import 'core/theme/app_theme.dart';
 import 'di/injection_container.dart';
 import 'features/reminders/application/cubit/reminder_list_cubit.dart';
 import 'features/reminders/application/cubit/reminder_summary_cubit.dart';
+import 'features/reminders/domain/repositories/reminder_repository.dart';
 import 'router/app_router.dart';
+import 'router/app_routes.dart';
+import 'services/alarm/alarm_service.dart';
 
 enum TextSizeOption { normal, large, extraLarge }
 
@@ -39,6 +45,7 @@ class LetMeKnowApp extends StatefulWidget {
 class LetMeKnowAppState extends State<LetMeKnowApp> {
   ThemeMode _themeMode = ThemeMode.system;
   TextSizeOption _textSize = TextSizeOption.normal;
+  StreamSubscription<AlarmSettings>? _alarmSubscription;
 
   ThemeMode get themeMode => _themeMode;
   TextSizeOption get textSize => _textSize;
@@ -47,6 +54,31 @@ class LetMeKnowAppState extends State<LetMeKnowApp> {
   void initState() {
     super.initState();
     _loadPreferences();
+    _setupAlarmListener();
+  }
+
+  void _setupAlarmListener() {
+    final alarmService = getIt<AlarmService>();
+    _alarmSubscription = alarmService.ringingStream.listen(_onAlarmRing);
+  }
+
+  void _onAlarmRing(AlarmSettings alarm) async {
+    // Buscar el reminder por su notificationId (que es el alarm.id)
+    final repo = getIt<ReminderRepository>();
+    final reminder = await repo.getByNotificationId(alarm.id);
+    
+    if (reminder != null) {
+      appRouter.pushNamed(
+        AppRoutes.alarmName,
+        pathParameters: {'id': reminder.id},
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _alarmSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPreferences() async {

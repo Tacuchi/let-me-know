@@ -25,6 +25,7 @@ import 'package:let_me_know/services/transcription/transcription_analyzer.dart';
 import 'package:let_me_know/services/transcription/local_transcription_analyzer.dart';
 import 'package:let_me_know/services/tts/tts_service.dart';
 import 'package:let_me_know/services/tts/tts_service_impl.dart';
+import 'package:let_me_know/services/alarm/alarm_service.dart';
 import 'package:let_me_know/core/services/feedback_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -42,6 +43,9 @@ Future<void> configureDependencies() async {
   // Services
   getIt.registerLazySingleton<NotificationService>(
     () => NotificationServiceImpl(),
+  );
+  getIt.registerLazySingleton<AlarmService>(
+    () => AlarmServiceImpl(),
   );
   getIt.registerLazySingleton<SpeechToTextService>(
     () => SpeechToTextServiceImpl(),

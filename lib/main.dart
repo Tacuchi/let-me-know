@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'app.dart';
 import 'di/injection_container.dart';
+import 'services/alarm/alarm_service.dart';
 import 'services/notifications/notification_service.dart';
 
 void main() async {
@@ -26,9 +27,13 @@ void main() async {
   await initializeDateFormatting('es_ES', null);
   await configureDependencies();
 
+  // Inicializar servicios de notificación y alarma
   final notificationService = getIt<NotificationService>();
   await notificationService.initialize();
   await notificationService.requestPermissions();
+
+  final alarmService = getIt<AlarmService>();
+  await alarmService.initialize();
 
   runApp(const LetMeKnowApp());
 }

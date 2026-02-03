@@ -360,7 +360,7 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
             _buildInfoRow(
               icon: Icons.access_time_rounded,
               label: 'Hora',
-              value: DateFormat.Hm('es_ES').format(reminder.scheduledAt!),
+              value: DateFormat.Hms('es_ES').format(reminder.scheduledAt!),
               isDark: isDark,
               valueStyle: TextStyle(
                 fontSize: 28,

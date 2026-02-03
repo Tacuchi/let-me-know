@@ -46,10 +46,12 @@ dependencies:
   speech_to_text: ^7.0.0        # Transcripción
   flutter_tts: ^4.2.0           # Text-to-Speech (respuestas por voz)
 
-  # Notificaciones
+  # Notificaciones y Alarmas
   flutter_local_notifications: ^18.0.1
   flutter_timezone: ^3.0.0          # Detección de zona horaria del dispositivo
   timezone: ^0.9.4                  # Manejo de zonas horarias para notificaciones
+  alarm: ^5.1.5                     # Alarmas infalibles (foreground service)
+  permission_handler: ^11.3.0       # Manejo de permisos
 
 dev_dependencies:
   flutter_test:
@@ -69,3 +71,4 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/sounds/

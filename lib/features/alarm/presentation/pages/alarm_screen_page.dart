@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/constants.dart';
 import '../../../../di/injection_container.dart';
+import '../../../../services/alarm/alarm_service.dart';
 import '../../../reminders/domain/entities/reminder.dart';
 import '../../../reminders/domain/entities/reminder_status.dart';
 import '../../../reminders/domain/entities/reminder_type.dart';
@@ -85,6 +86,9 @@ class _AlarmScreenPageState extends State<AlarmScreenPage>
     HapticFeedback.mediumImpact();
     
     try {
+      // Detener la alarma primero
+      await _stopAlarm();
+      
       final repo = getIt<ReminderRepository>();
       await repo.markAsCompleted(widget.reminderId);
       if (mounted) {
@@ -95,10 +99,20 @@ class _AlarmScreenPageState extends State<AlarmScreenPage>
     }
   }
 
+  Future<void> _stopAlarm() async {
+    if (_reminder?.notificationId != null) {
+      final alarmService = getIt<AlarmService>();
+      await alarmService.stopAlarm(_reminder!.notificationId!);
+    }
+  }
+
   Future<void> _snoozeReminder(Duration duration) async {
     HapticFeedback.mediumImpact();
     
     try {
+      // Detener la alarma primero
+      await _stopAlarm();
+      
       final repo = getIt<ReminderRepository>();
       await repo.snooze(widget.reminderId, duration);
       if (mounted) {

@@ -6,6 +6,8 @@ abstract class ReminderRepository {
 
   Future<Reminder?> getById(String id);
 
+  Future<Reminder?> getByNotificationId(int notificationId);
+
   Future<List<Reminder>> getForToday();
 
   Future<List<Reminder>> getForTomorrow();

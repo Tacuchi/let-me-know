@@ -14,9 +14,11 @@ extension DateExtensions on DateTime {
     return formatter.format(this);
   }
 
-  /// Formatea la hora como "8:00 AM"
+  /// Formatea la hora como "8:00:30 AM" (con segundos si no son cero)
   String get formattedTime {
-    final formatter = DateFormat('h:mm a', 'es_ES');
+    final formatter = second == 0
+        ? DateFormat('h:mm a', 'es_ES')
+        : DateFormat('h:mm:ss a', 'es_ES');
     return formatter.format(this);
   }
 
