@@ -350,14 +350,8 @@ class _ReminderListPageState extends State<ReminderListPage>
               _feedbackService.light();
               context.push('/reminders/${reminder.id}');
             },
-            onComplete: () {
-              _feedbackService.success();
-              context.read<ReminderListCubit>().markAsCompleted(reminder.id);
-            },
-            onDelete: () {
-              _feedbackService.medium();
-              context.read<ReminderListCubit>().delete(reminder.id);
-            },
+            onComplete: () => _completeReminder(context, reminder),
+            onDelete: () => _deleteReminder(context, reminder),
           ),
         ),
       );
@@ -454,14 +448,8 @@ class _ReminderListPageState extends State<ReminderListPage>
                   _feedbackService.light();
                   context.push('/reminders/${reminder.id}');
                 },
-                onComplete: () {
-                  _feedbackService.success();
-                  context.read<ReminderListCubit>().markAsCompleted(reminder.id);
-                },
-                onDelete: () {
-                  _feedbackService.medium();
-                  context.read<ReminderListCubit>().delete(reminder.id);
-                },
+                onComplete: () => _completeReminder(context, reminder),
+                onDelete: () => _deleteReminder(context, reminder),
               ),
             );
           }).toList(),
@@ -567,6 +555,28 @@ class _ReminderListPageState extends State<ReminderListPage>
     }
   }
 
+  void _completeReminder(BuildContext context, Reminder reminder) {
+    _feedbackService.success();
+    final cubit = context.read<ReminderListCubit>();
+    cubit.markAsCompleted(reminder.id);
+    _showUndoSnackBar(
+      context,
+      message: 'Recordatorio completado',
+      onUndo: () => cubit.markAsPending(reminder.id),
+    );
+  }
+
+  void _deleteReminder(BuildContext context, Reminder reminder) {
+    _feedbackService.medium();
+    final cubit = context.read<ReminderListCubit>();
+    cubit.delete(reminder.id);
+    _showUndoSnackBar(
+      context,
+      message: 'Recordatorio eliminado',
+      onUndo: () => cubit.restore(reminder),
+    );
+  }
+
   Widget _buildEmptyState(bool isDark, {ReminderListFilter filter = ReminderListFilter.all}) {
     final textColor = isDark
         ? AppColors.textSecondaryDark
@@ -647,10 +657,10 @@ class _ReminderListPageState extends State<ReminderListPage>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.swipe_rounded, size: 20, color: helperColor),
+                  Icon(Icons.touch_app_rounded, size: 20, color: helperColor),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
-                    'Desliza para gestionar',
+                    'Mantén presionado para opciones',
                     style: AppTypography.helper.copyWith(color: helperColor),
                   ),
                 ],
@@ -843,13 +853,23 @@ class _SearchSheetContentState extends State<_SearchSheetContent> {
                             },
                             onComplete: () {
                               getIt<FeedbackService>().success();
-                              context
-                                  .read<ReminderListCubit>()
-                                  .markAsCompleted(reminder.id);
+                              final cubit = context.read<ReminderListCubit>();
+                              cubit.markAsCompleted(reminder.id);
+                              _showUndoSnackBar(
+                                context,
+                                message: 'Recordatorio completado',
+                                onUndo: () => cubit.markAsPending(reminder.id),
+                              );
                             },
                             onDelete: () {
                               getIt<FeedbackService>().medium();
-                              context.read<ReminderListCubit>().delete(reminder.id);
+                              final cubit = context.read<ReminderListCubit>();
+                              cubit.delete(reminder.id);
+                              _showUndoSnackBar(
+                                context,
+                                message: 'Recordatorio eliminado',
+                                onUndo: () => cubit.restore(reminder),
+                              );
                             },
                           ),
                         );
@@ -864,4 +884,40 @@ class _SearchSheetContentState extends State<_SearchSheetContent> {
       },
     );
   }
+}
+
+/// Muestra un SnackBar con opción de deshacer
+void _showUndoSnackBar(
+  BuildContext context, {
+  required String message,
+  required VoidCallback onUndo,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        message,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      backgroundColor: isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
+      margin: const EdgeInsets.all(AppSpacing.md),
+      duration: const Duration(seconds: 5),
+      action: SnackBarAction(
+        label: 'DESHACER',
+        textColor: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
+        onPressed: () {
+          getIt<FeedbackService>().light();
+          onUndo();
+        },
+      ),
+    ),
+  );
 }

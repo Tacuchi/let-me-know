@@ -33,10 +33,24 @@ abstract class AlarmService {
 
   /// Verifica si el recordatorio debe usar alarma (alta importancia)
   bool shouldUseAlarm(Reminder reminder);
+
+  /// Verifica si una alarma específica está sonando actualmente
+  bool isAlarmRinging(int alarmId);
+
+  /// Verifica si hay alguna alarma sonando para un reminder (por notificationId)
+  bool isRingingForReminder(Reminder reminder);
+
+  /// Obtiene el ID del reminder desde el payload de una alarma sonando
+  String? getReminderIdFromRingingAlarm(int alarmId);
 }
 
 class AlarmServiceImpl implements AlarmService {
   bool _initialized = false;
+  
+  /// Conjunto de alarmas actualmente sonando (rastreadas internamente)
+  final Set<AlarmSettings> _ringingAlarms = {};
+  // ignore: unused_field - usado para mantener la suscripción activa
+  StreamSubscription<dynamic>? _ringingSubscription;
 
   @override
   Future<void> initialize() async {
@@ -44,6 +58,12 @@ class AlarmServiceImpl implements AlarmService {
 
     await Alarm.init();
     _initialized = true;
+    
+    // Escuchar el stream de alarmas sonando para mantener estado interno
+    _ringingSubscription = Alarm.ringing.listen((alarmSet) {
+      _ringingAlarms.clear();
+      _ringingAlarms.addAll(alarmSet.alarms);
+    });
     
     if (Platform.isAndroid) {
       await _checkAndRequestPermissions();
@@ -84,6 +104,7 @@ class AlarmServiceImpl implements AlarmService {
       vibrate: true,
       warningNotificationOnKill: true,
       androidFullScreenIntent: true,
+      payload: reminder.id, // Incluir reminderId para navegación
       volumeSettings: VolumeSettings.fade(
         fadeDuration: const Duration(seconds: 3),
         volume: 0.8,
@@ -128,11 +149,6 @@ class AlarmServiceImpl implements AlarmService {
   }
 
   @override
-  Future<bool> stopAlarm(int alarmId) async {
-    return await Alarm.stop(alarmId);
-  }
-
-  @override
   Future<List<AlarmSettings>> getScheduledAlarms() async {
     return await Alarm.getAlarms();
   }
@@ -141,5 +157,30 @@ class AlarmServiceImpl implements AlarmService {
   bool shouldUseAlarm(Reminder reminder) {
     // Todos los recordatorios usan alarma infalible
     return true;
+  }
+
+  @override
+  bool isAlarmRinging(int alarmId) {
+    return _ringingAlarms.any((alarm) => alarm.id == alarmId);
+  }
+
+  @override
+  bool isRingingForReminder(Reminder reminder) {
+    if (reminder.notificationId == null) return false;
+    return isAlarmRinging(reminder.notificationId!);
+  }
+
+  @override
+  String? getReminderIdFromRingingAlarm(int alarmId) {
+    final alarm = _ringingAlarms.where((a) => a.id == alarmId).firstOrNull;
+    return alarm?.payload;
+  }
+
+  @override
+  Future<bool> stopAlarm(int alarmId) async {
+    final result = await Alarm.stop(alarmId);
+    // Remover del conjunto de alarmas sonando
+    _ringingAlarms.removeWhere((alarm) => alarm.id == alarmId);
+    return result;
   }
 }

@@ -34,6 +34,9 @@ abstract class ReminderRepository {
 
   Future<void> markAsCompleted(String id);
 
+  /// Marca un recordatorio como pendiente (deshacer completado)
+  Future<void> markAsPending(String id);
+
   /// Pospone un recordatorio por una duración específica
   Future<void> snooze(String id, Duration duration);
 

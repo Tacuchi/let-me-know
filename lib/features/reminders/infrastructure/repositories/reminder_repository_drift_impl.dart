@@ -233,6 +233,34 @@ class ReminderRepositoryDriftImpl implements ReminderRepository {
   }
 
   @override
+  Future<void> markAsPending(String id) async {
+    final reminder = await getById(id);
+    if (reminder == null) return;
+
+    await (_db.update(_db.reminders)..where((t) => t.id.equals(id))).write(
+      RemindersCompanion(
+        status: const Value('pending'),
+        completedAtMs: const Value(null),
+        updatedAtMs: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+
+    // Reprogramar alarma/notificación si tiene fecha futura
+    if (reminder.scheduledAt != null &&
+        reminder.scheduledAt!.isAfter(DateTime.now()) &&
+        reminder.hasNotification) {
+      final alarmService = getIt<AlarmService>();
+
+      if (alarmService.shouldUseAlarm(reminder)) {
+        await alarmService.scheduleAlarm(reminder);
+      } else {
+        final notificationService = getIt<NotificationService>();
+        await notificationService.scheduleNotification(reminder);
+      }
+    }
+  }
+
+  @override
   Future<void> snooze(String id, Duration duration) async {
     final reminder = await getById(id);
     if (reminder == null) return;

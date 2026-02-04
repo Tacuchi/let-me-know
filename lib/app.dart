@@ -63,14 +63,20 @@ class LetMeKnowAppState extends State<LetMeKnowApp> {
   }
 
   void _onAlarmRing(AlarmSettings alarm) async {
-    // Buscar el reminder por su notificationId (que es el alarm.id)
-    final repo = getIt<ReminderRepository>();
-    final reminder = await repo.getByNotificationId(alarm.id);
+    // Obtener reminderId del payload o buscar por notificationId
+    String? reminderId = alarm.payload;
     
-    if (reminder != null) {
+    if (reminderId == null || reminderId.isEmpty) {
+      final repo = getIt<ReminderRepository>();
+      final reminder = await repo.getByNotificationId(alarm.id);
+      reminderId = reminder?.id;
+    }
+    
+    if (reminderId != null) {
+      // Navegar al detalle del reminder (que mostrará el banner de alarma sonando)
       appRouter.pushNamed(
-        AppRoutes.alarmName,
-        pathParameters: {'id': reminder.id},
+        AppRoutes.reminderDetailName,
+        pathParameters: {'id': reminderId},
       );
     }
   }

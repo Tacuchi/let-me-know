@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:alarm/alarm.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/constants.dart';
 import '../../../../di/injection_container.dart';
+import '../../../../services/alarm/alarm_service.dart';
 import '../../../../services/tts/tts_service.dart';
 import '../../application/cubit/reminder_detail_cubit.dart';
 import '../../application/cubit/reminder_detail_state.dart';
@@ -15,6 +17,7 @@ import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_importance.dart';
 import '../../domain/entities/reminder_status.dart';
 import '../../domain/entities/reminder_type.dart';
+import '../widgets/alarm_ringing_banner.dart';
 
 class ReminderDetailPage extends StatefulWidget {
   const ReminderDetailPage({super.key});
@@ -28,18 +31,43 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
   Duration _timeRemaining = Duration.zero;
   bool _isTimeUp = false;
   bool _isSpeaking = false;
+  bool _isAlarmRinging = false;
 
   late final TtsService _ttsService;
+  late final AlarmService _alarmService;
+  StreamSubscription<AlarmSettings>? _alarmSubscription;
 
   @override
   void initState() {
     super.initState();
     _ttsService = getIt<TtsService>();
+    _alarmService = getIt<AlarmService>();
+    _setupAlarmListener();
+  }
+
+  void _setupAlarmListener() {
+    // Escuchar el stream de alarmas sonando
+    _alarmSubscription = _alarmService.ringingStream.listen((alarm) {
+      _checkAlarmStatus();
+    });
+    // Verificar estado inicial
+    _checkAlarmStatus();
+  }
+
+  void _checkAlarmStatus() {
+    final state = context.read<ReminderDetailCubit>().state;
+    if (state is ReminderDetailLoaded) {
+      final isRinging = _alarmService.isRingingForReminder(state.reminder);
+      if (isRinging != _isAlarmRinging && mounted) {
+        setState(() => _isAlarmRinging = isRinging);
+      }
+    }
   }
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _alarmSubscription?.cancel();
     _ttsService.stop();
     super.dispose();
   }
@@ -165,6 +193,10 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
                 !reminder.isNote) {
               _startCountdown(reminder.scheduledAt!);
             }
+            // Verificar si la alarma está sonando
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _checkAlarmStatus();
+            });
           default:
             break;
         }
@@ -305,6 +337,29 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     );
   }
 
+  Future<void> _stopAlarm(Reminder reminder) async {
+    if (reminder.notificationId != null) {
+      await _alarmService.stopAlarm(reminder.notificationId!);
+      if (mounted) {
+        setState(() => _isAlarmRinging = false);
+        _showSnackBar(context, 'Alarma detenida');
+      }
+    }
+  }
+
+  Future<void> _snoozeAlarm(Reminder reminder) async {
+    if (reminder.notificationId != null) {
+      // Capturar el cubit antes del await
+      final cubit = context.read<ReminderDetailCubit>();
+      await _alarmService.stopAlarm(reminder.notificationId!);
+      // Posponer el recordatorio
+      cubit.snooze(const Duration(minutes: 5));
+      if (mounted) {
+        setState(() => _isAlarmRinging = false);
+      }
+    }
+  }
+
   Widget _buildContent(BuildContext context, Reminder reminder) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isNote = reminder.isNote;
@@ -315,6 +370,13 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Banner de alarma sonando (si aplica)
+          if (_isAlarmRinging && !isCompleted)
+            AlarmRingingBanner(
+              onStop: () => _stopAlarm(reminder),
+              onSnooze: () => _snoozeAlarm(reminder),
+            ),
+
           // Card principal: Tipo + Título
           _buildHeaderCard(reminder, isDark),
           const SizedBox(height: 16),

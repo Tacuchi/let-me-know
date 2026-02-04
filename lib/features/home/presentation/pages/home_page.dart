@@ -647,10 +647,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   isDark: isDark,
                 ),
                 _buildHelpItem(
-                  icon: Icons.swipe_rounded,
-                  title: 'Gestos',
+                  icon: Icons.touch_app_rounded,
+                  title: 'Opciones',
                   description:
-                      'Desliza hacia la derecha para completar, hacia la izquierda para eliminar.',
+                      'Mantén presionado un recordatorio para ver las opciones: completar, editar o eliminar.',
                   isDark: isDark,
                 ),
                 _buildHelpItem(

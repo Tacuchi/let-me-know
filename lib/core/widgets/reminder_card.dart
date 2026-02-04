@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-
 import '../constants/constants.dart';
 import '../../features/reminders/domain/entities/reminder.dart';
 import '../../features/reminders/domain/entities/reminder_type.dart';
 import '../../features/reminders/domain/entities/reminder_status.dart';
 
-import '../../../../di/injection_container.dart';
-import '../../../../core/services/feedback_service.dart';
+import '../../di/injection_container.dart';
+import '../../core/services/feedback_service.dart';
 
 class ReminderCard extends StatefulWidget {
   final Reminder reminder;
@@ -49,9 +48,9 @@ class _ReminderCardState extends State<ReminderCard>
       begin: 1.0,
       end: 0.98,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    
+
     _feedbackService = getIt<FeedbackService>();
-    
+
     // Iniciar timer si tiene fecha programada y muestra progreso
     _startProgressTimer();
   }
@@ -66,13 +65,13 @@ class _ReminderCardState extends State<ReminderCard>
 
   void _startProgressTimer() {
     _progressTimer?.cancel();
-    
+
     final shouldShowProgress = widget.showProgress &&
         !_isNote &&
         widget.reminder.scheduledAt != null &&
         widget.reminder.status != ReminderStatus.completed &&
         widget.reminder.status != ReminderStatus.overdue;
-    
+
     if (shouldShowProgress) {
       // Actualizar cada 10 segundos para mostrar progreso más fluido
       _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) {
@@ -93,14 +92,177 @@ class _ReminderCardState extends State<ReminderCard>
   IconData get _typeIcon => widget.reminder.type.icon;
   bool get _isNote => widget.reminder.type.isNote;
 
+  void _showContextMenu() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final isCompleted = widget.reminder.status == ReminderStatus.completed;
+
+    _feedbackService.medium();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: bgColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.dividerDark : AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                // Título del recordatorio
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: _typeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        child: Icon(_typeIcon, size: 20, color: _typeColor),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          widget.reminder.title,
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: textColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Divider(
+                  color: isDark ? AppColors.dividerDark : AppColors.divider,
+                  height: 1,
+                ),
+                // Opciones
+                if (!_isNote && widget.onComplete != null && !isCompleted)
+                  _buildMenuOption(
+                    context,
+                    icon: Icons.check_circle_outline_rounded,
+                    label: 'Marcar como completado',
+                    color: AppColors.completed,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _feedbackService.success();
+                      widget.onComplete?.call();
+                    },
+                  ),
+                _buildMenuOption(
+                  context,
+                  icon: Icons.edit_outlined,
+                  label: 'Editar',
+                  color: isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _feedbackService.light();
+                    widget.onTap?.call();
+                  },
+                ),
+                if (widget.onDelete != null)
+                  _buildMenuOption(
+                    context,
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Eliminar',
+                    color: AppColors.error,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _feedbackService.medium();
+                      widget.onDelete?.call();
+                    },
+                  ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMenuOption(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Icon(icon, size: 22, color: color),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark ? AppColors.textHelperDark : AppColors.textHelper,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isCompleted = widget.reminder.status == ReminderStatus.completed;
     // Notas nunca están "vencidas" (no tienen fecha)
-    final isOverdue = !_isNote && widget.reminder.status == ReminderStatus.overdue;
+    final isOverdue =
+        !_isNote && widget.reminder.status == ReminderStatus.overdue;
 
-    Widget card = ScaleTransition(
+    final hasActions = widget.onComplete != null || widget.onDelete != null;
+
+    final Widget card = ScaleTransition(
       scale: _scaleAnimation,
       child: GestureDetector(
         onTapDown: (_) => _controller.forward(),
@@ -110,21 +272,27 @@ class _ReminderCardState extends State<ReminderCard>
           _feedbackService.light();
           widget.onTap?.call();
         },
+        onLongPress: hasActions ? _showContextMenu : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
+          decoration: BoxDecoration(
             color: _getBackgroundColor(isDark, isCompleted, isOverdue),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            border: isOverdue 
-              ? Border.all(color: AppColors.overdue, width: 2)
-              : Border(left: BorderSide(color: _typeColor, width: 6)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08), // Sombra más marcada
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isOverdue
+                  ? AppColors.overdue
+                  : _typeColor.withValues(alpha: isCompleted ? 0.3 : 0.5),
+              width: isOverdue ? 2 : 1.5,
+            ),
+            boxShadow: isCompleted
+                ? null
+                : [
+                    BoxShadow(
+                      color: _typeColor.withValues(alpha: isDark ? 0.15 : 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -149,16 +317,15 @@ class _ReminderCardState extends State<ReminderCard>
                         widget.reminder.title,
                         style: AppTypography.bodyLarge.copyWith(
                           fontWeight: FontWeight.w600,
-                          decoration: isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
+                          decoration:
+                              isCompleted ? TextDecoration.lineThrough : null,
                           color: isCompleted
                               ? (isDark
-                                    ? AppColors.textHelperDark
-                                    : AppColors.textHelper)
+                                  ? AppColors.textHelperDark
+                                  : AppColors.textHelper)
                               : (isDark
-                                    ? AppColors.textPrimaryDark
-                                    : AppColors.textPrimary),
+                                  ? AppColors.textPrimaryDark
+                                  : AppColors.textPrimary),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -212,6 +379,17 @@ class _ReminderCardState extends State<ReminderCard>
                           ),
                         ),
                       ),
+                    // Indicador de que se puede mantener presionado
+                    if (hasActions && !isCompleted) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(
+                        Icons.more_vert_rounded,
+                        size: 18,
+                        color: isDark
+                            ? AppColors.textHelperDark
+                            : AppColors.textHelper,
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -256,8 +434,8 @@ class _ReminderCardState extends State<ReminderCard>
                           color: isOverdue
                               ? AppColors.error
                               : (isDark
-                                    ? AppColors.textSecondaryDark
-                                    : AppColors.textSecondary),
+                                  ? AppColors.textSecondaryDark
+                                  : AppColors.textSecondary),
                         ),
                       ),
                     ],
@@ -277,80 +455,12 @@ class _ReminderCardState extends State<ReminderCard>
       ),
     );
 
-    if (widget.onComplete != null || widget.onDelete != null) {
-      // Notas solo permiten eliminar, no completar
-      final allowComplete = !_isNote && widget.onComplete != null;
-      final allowDelete = widget.onDelete != null;
-
-      // Determinar dirección del swipe
-      final DismissDirection direction;
-      if (allowComplete && allowDelete) {
-        direction = DismissDirection.horizontal;
-      } else if (allowDelete) {
-        direction = DismissDirection.endToStart;
-      } else if (allowComplete) {
-        direction = DismissDirection.startToEnd;
-      } else {
-        direction = DismissDirection.none;
-      }
-
-      // Solo envolver en Dismissible si hay alguna dirección permitida
-      if (direction != DismissDirection.none) {
-        card = Dismissible(
-          key: Key(widget.reminder.id),
-          direction: direction,
-          confirmDismiss: (dir) async {
-            if (dir == DismissDirection.endToStart && allowDelete) {
-              await _feedbackService.medium();
-              widget.onDelete?.call();
-              return true;
-            } else if (dir == DismissDirection.startToEnd && allowComplete) {
-              await _feedbackService.success();
-              widget.onComplete?.call();
-              return false;
-            }
-            return false;
-          },
-          // Para endToStart solo necesitamos background (no secondaryBackground)
-          background: _buildSwipeBackground(
-            context,
-            alignment: direction == DismissDirection.endToStart
-                ? Alignment.centerRight
-                : Alignment.centerLeft,
-            color: direction == DismissDirection.endToStart
-                ? AppColors.error
-                : AppColors.accentSecondary,
-            icon: direction == DismissDirection.endToStart
-                ? Icons.delete_rounded
-                : Icons.check_rounded,
-            label: direction == DismissDirection.endToStart
-                ? 'Eliminar'
-                : 'Completar',
-          ),
-          secondaryBackground: direction == DismissDirection.horizontal
-              ? _buildSwipeBackground(
-                  context,
-                  alignment: Alignment.centerRight,
-                  color: AppColors.error,
-                  icon: Icons.delete_rounded,
-                  label: 'Eliminar',
-                )
-              : null,
-          child: card,
-        );
-      }
-    }
-
     return Semantics(
       button: true,
-      label:
-          '${widget.reminder.type.label}: ${widget.reminder.title}. '
+      label: '${widget.reminder.type.label}: ${widget.reminder.title}. '
           '${widget.reminder.scheduledAt == null ? 'Sin fecha' : _formatDateTime(widget.reminder.scheduledAt!)}. '
-          '${isCompleted
-              ? 'Completado'
-              : isOverdue
-              ? 'Vencido'
-              : 'Pendiente'}',
+          '${isCompleted ? 'Completado' : isOverdue ? 'Vencido' : 'Pendiente'}. '
+          '${hasActions ? 'Mantén presionado para ver opciones.' : ''}',
       child: card,
     );
   }
@@ -358,59 +468,14 @@ class _ReminderCardState extends State<ReminderCard>
   Color _getBackgroundColor(bool isDark, bool isCompleted, bool isOverdue) {
     if (isCompleted) {
       return (isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary)
-          .withValues(alpha: 0.5);
+          .withValues(alpha: 0.6);
     }
     if (isOverdue) {
-      return AppColors.overdue.withValues(alpha: isDark ? 0.15 : 0.1);
+      return AppColors.overdue.withValues(alpha: isDark ? 0.12 : 0.08);
     }
-    // Fondo de tarjeta con buen contraste
-    return isDark ? AppColors.bgSecondaryDark : Colors.white; 
-  }
-
-  Widget _buildSwipeBackground(
-    BuildContext context, {
-    required AlignmentGeometry alignment,
-    required Color color,
-    required IconData icon,
-    required String label,
-  }) {
-    return Container(
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: alignment == Alignment.centerLeft
-            ? [
-                Icon(icon, color: Colors.white, size: 28),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-              ]
-            : [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Icon(icon, color: Colors.white, size: 28),
-              ],
-      ),
-    );
+    // Fondo con tinte suave del color del tipo
+    final baseColor = isDark ? AppColors.bgSecondaryDark : Colors.white;
+    return Color.lerp(baseColor, _typeColor, isDark ? 0.08 : 0.05)!;
   }
 
   Widget _buildProgressIndicator(bool isDark) {
@@ -445,9 +510,8 @@ class _ReminderCardState extends State<ReminderCard>
             builder: (context, value, child) {
               return LinearProgressIndicator(
                 value: value,
-                backgroundColor: isDark
-                    ? AppColors.dividerDark
-                    : AppColors.divider,
+                backgroundColor:
+                    isDark ? AppColors.dividerDark : AppColors.divider,
                 valueColor: AlwaysStoppedAnimation(_typeColor),
                 borderRadius: BorderRadius.circular(2),
               );

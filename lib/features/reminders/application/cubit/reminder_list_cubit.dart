@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../domain/entities/reminder.dart';
 import '../../domain/repositories/reminder_repository.dart';
 import 'reminder_list_state.dart';
 
@@ -94,12 +95,32 @@ class ReminderListCubit extends Cubit<ReminderListState> {
     }
   }
 
+  /// Marca un recordatorio como pendiente (deshacer completado)
+  Future<void> markAsPending(String id) async {
+    try {
+      await _repository.markAsPending(id);
+      await refresh();
+    } catch (_) {
+      emit(const ReminderListError('No se pudo restaurar el recordatorio'));
+    }
+  }
+
   Future<void> delete(String id) async {
     try {
       await _repository.delete(id);
       await refresh();
     } catch (_) {
       emit(const ReminderListError('No se pudo eliminar el recordatorio'));
+    }
+  }
+
+  /// Restaura un recordatorio previamente eliminado
+  Future<void> restore(Reminder reminder) async {
+    try {
+      await _repository.save(reminder);
+      await refresh();
+    } catch (_) {
+      emit(const ReminderListError('No se pudo restaurar el recordatorio'));
     }
   }
 
