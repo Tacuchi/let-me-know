@@ -11,11 +11,13 @@ import '../../domain/models/chat_message.dart';
 class ChatMessageBubble extends StatelessWidget {
   final ChatMessage message;
   final VoidCallback? onTapSystemMessage;
+  final VoidCallback? onRetry;
 
   const ChatMessageBubble({
     super.key,
     required this.message,
     this.onTapSystemMessage,
+    this.onRetry,
   });
 
   @override
@@ -180,15 +182,16 @@ class ChatMessageBubble extends StatelessWidget {
 
   Widget _buildErrorBubble(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final canRetry = onRetry != null && message.originalTranscription != null;
 
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
         ),
         margin: const EdgeInsets.only(
-          right: AppSpacing.xl,
+          right: AppSpacing.lg,
           bottom: AppSpacing.sm,
         ),
         padding: const EdgeInsets.symmetric(
@@ -205,7 +208,7 @@ class ChatMessageBubble extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Icon(Icons.error_outline_rounded,
                 size: 16, color: AppColors.error),
@@ -219,6 +222,10 @@ class ChatMessageBubble extends StatelessWidget {
                 ),
               ),
             ),
+            if (canRetry) ...[
+              const SizedBox(width: AppSpacing.sm),
+              _RetryButton(onTap: onRetry!),
+            ],
           ],
         ),
       ),
@@ -259,6 +266,60 @@ class ChatMessageBubble extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Botón compacto de reintentar para mensajes de error.
+class _RetryButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _RetryButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            border: Border.all(
+              color: AppColors.error.withValues(alpha: 0.4),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.refresh_rounded,
+                size: 14,
+                color: AppColors.error,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Reintentar',
+                style: AppTypography.helper.copyWith(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

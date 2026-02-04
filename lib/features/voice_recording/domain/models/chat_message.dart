@@ -38,6 +38,9 @@ class ChatMessage extends Equatable {
   /// Si el mensaje del usuario fue por voz (true) o texto (false).
   final bool isVoice;
 
+  /// Transcripción original que causó el error (para retry).
+  final String? originalTranscription;
+
   const ChatMessage({
     required this.id,
     required this.type,
@@ -46,6 +49,7 @@ class ChatMessage extends Equatable {
     this.response,
     this.errorText,
     this.isVoice = false,
+    this.originalTranscription,
   });
 
   /// Crea un mensaje de voz del usuario.
@@ -94,12 +98,14 @@ class ChatMessage extends Equatable {
   factory ChatMessage.systemError({
     required String id,
     required String errorText,
+    String? originalTranscription,
   }) {
     return ChatMessage(
       id: id,
       type: ChatMessageType.systemError,
       timestamp: DateTime.now(),
       errorText: errorText,
+      originalTranscription: originalTranscription,
     );
   }
 
@@ -117,5 +123,5 @@ class ChatMessage extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, type, timestamp, text, errorText, isVoice];
+  List<Object?> get props => [id, type, timestamp, text, errorText, isVoice, originalTranscription];
 }

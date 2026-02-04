@@ -7,6 +7,7 @@ import '../../core/config/api_config.dart';
 import 'models/assistant_request.dart';
 import 'models/assistant_response.dart';
 import 'models/preview_request.dart';
+import 'models/preview_response.dart';
 
 /// Excepciones del cliente API.
 class ApiException implements Exception {
@@ -78,8 +79,9 @@ class AssistantApiClient {
     }
   }
 
-  /// Obtiene un preview de batch sin crear items individuales.
-  Future<AssistantResponse> preview(PreviewRequest request) async {
+  /// Obtiene preview(s) de batch sin crear items individuales.
+  /// Puede retornar múltiples previews si hay diferentes frecuencias.
+  Future<PreviewResponse> preview(PreviewRequest request) async {
     final url = Uri.parse('$_baseUrl${ApiConfig.previewEndpoint}');
 
     try {
@@ -96,7 +98,7 @@ class AssistantApiClient {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        return AssistantResponse.fromJson(json);
+        return PreviewResponse.fromJson(json);
       } else {
         throw ApiException(
           'Error del servidor: ${response.reasonPhrase}',

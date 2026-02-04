@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/feedback_service.dart';
 import '../../../../services/assistant/models/assistant_response.dart';
+import '../../../../services/assistant/models/preview_response.dart';
 import '../../../../services/assistant/voice_assistant_service.dart';
 import '../../../../services/tts/tts_service.dart';
 import '../../../groups/domain/entities/reminder_group.dart';
@@ -99,8 +100,8 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
 
       if (isClosed) return;
 
-      if (previewResponse.action == AssistantAction.previewBatch) {
-        // Es un batch - mostrar preview
+      if (previewResponse.hasPreviewBatches) {
+        // Es un batch - mostrar preview(s)
         _handlePreviewResponse(previewResponse);
         return;
       }
@@ -119,7 +120,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       _handleResponse(response, text);
     } catch (e) {
       if (isClosed) return;
-      _handleError(e);
+      _handleError(e, text);
     }
   }
 
@@ -156,8 +157,8 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
 
       if (isClosed) return;
 
-      if (previewResponse.action == AssistantAction.previewBatch) {
-        // Es un batch - mostrar preview
+      if (previewResponse.hasPreviewBatches) {
+        // Es un batch - mostrar preview(s)
         _handlePreviewResponse(previewResponse);
         return;
       }
@@ -177,7 +178,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       _handleResponse(response, transcription);
     } catch (e) {
       if (isClosed) return;
-      _handleError(e);
+      _handleError(e, transcription);
     }
   }
 
@@ -197,27 +198,36 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     }
   }
 
-  void _handlePreviewResponse(AssistantResponse response) {
+  void _handlePreviewResponse(PreviewResponse response) {
     final current = state;
     if (current is! VoiceChatReady) return;
 
-    final previewData = response.previewData;
-    if (previewData == null) return;
-
-    final preview = PendingPreview.fromPreviewData(
-      id: _uuid.v4(),
-      data: previewData,
-      spokenResponse: response.spokenResponse,
+    // Crear mensaje primero para obtener su ID
+    final messageId = _uuid.v4();
+    final systemMessage = ChatMessage.systemAction(
+      id: messageId,
+      text: response.spokenResponse,
     );
 
-    final systemMessage = ChatMessage.systemResponse(
-      id: _uuid.v4(),
-      response: response,
-    );
+    // Crear previews vinculados al mensaje
+    final newPreviews = <PendingPreview>[];
+    for (final item in response.batchPreviews) {
+      final previewData = item.previewData;
+      if (previewData == null) continue;
+
+      newPreviews.add(PendingPreview.fromPreviewData(
+        id: _uuid.v4(),
+        messageId: messageId,
+        data: previewData,
+        spokenResponse: '', // El spoken combinado viene en el mensaje
+      ));
+    }
+
+    if (newPreviews.isEmpty) return;
 
     emit(current.copyWith(
       messages: [...current.messages, systemMessage],
-      pendingPreviews: [...current.pendingPreviews, preview],
+      pendingPreviews: [...current.pendingPreviews, ...newPreviews],
       phase: VoiceChatPhase.idle,
     ));
 
@@ -331,7 +341,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     }
   }
 
-  void _handleError(Object error) {
+  void _handleError(Object error, String originalTranscription) {
     final current = state;
     if (current is! VoiceChatReady) return;
 
@@ -348,6 +358,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     final errorMessage = ChatMessage.systemError(
       id: _uuid.v4(),
       errorText: errorText,
+      originalTranscription: originalTranscription,
     );
 
     emit(current.copyWith(
@@ -355,6 +366,58 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       phase: VoiceChatPhase.idle,
       lastError: () => errorText,
     ));
+  }
+
+  /// Reintenta procesar un mensaje que falló.
+  Future<void> retryMessage(String messageId) async {
+    final current = state;
+    if (current is! VoiceChatReady) return;
+
+    // Buscar el mensaje de error
+    final errorMessage = current.messages
+        .where((m) => m.id == messageId && m.type == ChatMessageType.systemError)
+        .firstOrNull;
+    
+    if (errorMessage?.originalTranscription == null) return;
+
+    // Eliminar el mensaje de error
+    final updatedMessages = current.messages
+        .where((m) => m.id != messageId)
+        .toList();
+    
+    emit(current.copyWith(
+      messages: updatedMessages,
+      phase: VoiceChatPhase.processing,
+    ));
+
+    // Reintentar el procesamiento
+    final transcription = errorMessage!.originalTranscription!;
+    
+    try {
+      final previewResponse = await _assistantService.preview(transcription);
+
+      if (isClosed) return;
+
+      if (previewResponse.hasPreviewBatches) {
+        _handlePreviewResponse(previewResponse);
+        return;
+      }
+
+      final sessionItems = current.pendingItems
+          .map((item) => item.toSessionItemJson())
+          .toList();
+
+      final response = await _assistantService.process(
+        transcription,
+        sessionItems: sessionItems,
+      );
+
+      if (isClosed) return;
+      _handleResponse(response, transcription);
+    } catch (e) {
+      if (isClosed) return;
+      _handleError(e, transcription);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

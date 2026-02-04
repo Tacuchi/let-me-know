@@ -11,6 +11,10 @@ class PendingPreview extends Equatable {
   /// ID local para tracking.
   final String id;
 
+  /// ID del mensaje del chat que originó este preview.
+  /// Usado para mostrar el preview justo debajo de su mensaje.
+  final String messageId;
+
   /// Resumen del batch (ej: "60 recordatorios de Losartán").
   final String summary;
 
@@ -36,6 +40,7 @@ class PendingPreview extends Equatable {
 
   const PendingPreview({
     required this.id,
+    required this.messageId,
     required this.summary,
     required this.groupLabel,
     required this.estimatedCount,
@@ -49,11 +54,13 @@ class PendingPreview extends Equatable {
   /// Crea un PendingPreview desde PreviewData del LLM.
   factory PendingPreview.fromPreviewData({
     required String id,
+    required String messageId,
     required PreviewData data,
     required String spokenResponse,
   }) {
     return PendingPreview(
       id: id,
+      messageId: messageId,
       summary: data.summary,
       groupLabel: data.groupLabel,
       estimatedCount: data.estimatedCount,
@@ -68,6 +75,7 @@ class PendingPreview extends Equatable {
   @override
   List<Object?> get props => [
         id,
+        messageId,
         summary,
         groupLabel,
         estimatedCount,

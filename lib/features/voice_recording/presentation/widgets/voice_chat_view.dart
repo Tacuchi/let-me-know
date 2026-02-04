@@ -6,15 +6,12 @@ import '../../../../core/core.dart';
 import '../../../../core/services/feedback_service.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../router/app_routes.dart';
-import '../../../../services/assistant/models/assistant_response.dart';
 import '../../../../services/speech_to_text/speech_to_text_service.dart';
 import '../../../../services/tts/tts_service.dart';
 import '../../application/cubit/voice_chat_cubit.dart';
 import '../../application/cubit/voice_chat_state.dart';
 import '../../domain/models/chat_message.dart';
-import '../../domain/models/pending_creation.dart';
 import 'chat_message_bubble.dart';
-import 'pending_batch_card.dart';
 import 'pending_creation_card.dart';
 import 'pending_preview_card.dart';
 import 'voice_chat_bottom_bar.dart';
@@ -90,7 +87,8 @@ class _VoiceChatViewState extends State<VoiceChatView> {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (!mounted) return;
+      if (_scrollController.hasClients && _scrollController.position.hasContentDimensions) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
@@ -199,57 +197,12 @@ class _VoiceChatViewState extends State<VoiceChatView> {
 
   Widget _buildMessageList(BuildContext context, VoiceChatReady state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cubit = context.read<VoiceChatCubit>();
 
-    // Construir la lista de widgets: mensajes + cards pendientes intercalados
-    final items = <Widget>[];
+    // Construir lista intercalando mensajes con sus previews/items adjuntos
+    final items = _buildInterleavedList(state, cubit);
 
-    // Indice para rastrear que pending items mostrar despues de cada mensaje
-    int pendingIndex = 0;
-
-    for (final message in state.messages) {
-      // Para mensajes del sistema, agregar callback de TTS
-      if (message.type == ChatMessageType.systemResponse &&
-          message.text != null &&
-          message.text!.isNotEmpty) {
-        items.add(ChatMessageBubble(
-          message: message,
-          onTapSystemMessage: () => _speakMessage(message.text!),
-        ));
-      } else {
-        items.add(ChatMessageBubble(message: message));
-      }
-
-      // Despues de un systemResponse de creacion, mostrar los pending cards
-      // que fueron agregados con ese mensaje
-      if (message.type == ChatMessageType.systemResponse &&
-          message.response != null) {
-        final action = message.response!.action;
-        final isCreation = _isCreationAction(action);
-        final isPreview = action == AssistantAction.previewBatch;
-
-        if (isCreation) {
-          // Contar cuantos items agregar
-          final count = _getPendingCountForAction(message.response!);
-          final end = (pendingIndex + count).clamp(0, state.pendingItems.length);
-          final itemsToShow = state.pendingItems.sublist(pendingIndex, end);
-
-          // Agrupar por batchGroupId para mostrar cards compactas
-          items.addAll(_buildPendingCards(context, itemsToShow));
-          pendingIndex = end;
-        } else if (isPreview) {
-          // Mostrar preview card para el batch
-          items.addAll(_buildPreviewCards(context, state));
-        }
-      }
-    }
-
-    // Mostrar pending items que no se hayan mostrado (por si hay desync)
-    if (pendingIndex < state.pendingItems.length) {
-      final remaining = state.pendingItems.sublist(pendingIndex);
-      items.addAll(_buildPendingCards(context, remaining));
-    }
-
-    // Indicador de grabacion/procesamiento al final
+    // Agregar indicador de grabación/procesamiento al final
     if (state.isRecording) {
       items.add(_buildRecordingIndicator(isDark, state));
     } else if (state.isProcessing) {
@@ -266,85 +219,99 @@ class _VoiceChatViewState extends State<VoiceChatView> {
     );
   }
 
-  /// Construye widgets para los items pendientes, agrupando batches.
-  List<Widget> _buildPendingCards(BuildContext context, List<PendingCreation> items) {
-    if (items.isEmpty) return [];
-
+  /// Construye lista intercalada: mensaje -> previews/items vinculados -> mensaje -> ...
+  List<Widget> _buildInterleavedList(VoiceChatReady state, VoiceChatCubit cubit) {
     final widgets = <Widget>[];
-    final processedGroupIds = <String>{};
+    final usedPreviewIds = <String>{};
+    final usedItemIds = <String>{};
 
-    for (final item in items) {
-      // Si es parte de un batch, mostrar card agrupada
-      if (item.batchGroupId != null) {
-        if (processedGroupIds.contains(item.batchGroupId)) continue;
-        processedGroupIds.add(item.batchGroupId!);
-
-        // Obtener todos los items del mismo grupo
-        final groupItems = items
-            .where((i) => i.batchGroupId == item.batchGroupId)
-            .toList();
-
-        widgets.add(PendingBatchCard(
-          key: ValueKey('batch_${item.batchGroupId}'),
-          items: groupItems,
-          groupLabel: item.batchGroupLabel ?? 'Tratamiento',
-          onRemove: () => _removeAllInGroup(context, item.batchGroupId!),
+    for (final message in state.messages) {
+      // Agregar el mensaje
+      final hasText = message.text != null && message.text!.isNotEmpty;
+      final isSystemMessage = message.type == ChatMessageType.systemResponse ||
+                              message.type == ChatMessageType.systemAction;
+      
+      if (isSystemMessage && hasText) {
+        widgets.add(ChatMessageBubble(
+          key: ValueKey('msg_${message.id}'),
+          message: message,
+          onTapSystemMessage: () => _speakMessage(message.text!),
+        ));
+      } else if (message.type == ChatMessageType.systemError) {
+        widgets.add(ChatMessageBubble(
+          key: ValueKey('msg_${message.id}'),
+          message: message,
+          onRetry: message.originalTranscription != null
+              ? () => cubit.retryMessage(message.id)
+              : null,
         ));
       } else {
-        // Item individual
+        widgets.add(ChatMessageBubble(
+          key: ValueKey('msg_${message.id}'),
+          message: message,
+        ));
+      }
+
+      // Buscar y agregar TODOS los previews vinculados a este mensaje
+      final linkedPreviews = state.pendingPreviews
+          .where((p) => p.messageId == message.id && !usedPreviewIds.contains(p.id))
+          .toList();
+      
+      for (final preview in linkedPreviews) {
+        widgets.add(PendingPreviewCard(
+          key: ValueKey('preview_${preview.id}'),
+          preview: preview,
+          onRemove: () => cubit.removePendingPreview(preview.id),
+        ));
+        usedPreviewIds.add(preview.id);
+      }
+
+      // Agregar items de creación si el mensaje tiene response con acción de creación
+      if (message.type == ChatMessageType.systemResponse &&
+          message.response != null) {
+        final action = message.response!.action;
+
+        if (action.name == 'createReminder' || action.name == 'createNote') {
+          // Buscar el próximo item no usado (mantiene compatibilidad con items sin messageId)
+          final nextItem = state.pendingItems
+              .where((i) => !usedItemIds.contains(i.id))
+              .firstOrNull;
+          
+          if (nextItem != null) {
+            widgets.add(PendingCreationCard(
+              key: ValueKey('item_${nextItem.id}'),
+              item: nextItem,
+              onRemove: () => cubit.removePendingItem(nextItem.id),
+            ));
+            usedItemIds.add(nextItem.id);
+          }
+        }
+      }
+    }
+
+    // Agregar previews huérfanos (sin messageId válido)
+    for (final preview in state.pendingPreviews) {
+      if (!usedPreviewIds.contains(preview.id)) {
+        widgets.add(PendingPreviewCard(
+          key: ValueKey('preview_${preview.id}'),
+          preview: preview,
+          onRemove: () => cubit.removePendingPreview(preview.id),
+        ));
+      }
+    }
+
+    // Agregar items huérfanos
+    for (final item in state.pendingItems) {
+      if (!usedItemIds.contains(item.id)) {
         widgets.add(PendingCreationCard(
-          key: ValueKey(item.id),
+          key: ValueKey('item_${item.id}'),
           item: item,
-          onRemove: () =>
-              context.read<VoiceChatCubit>().removePendingItem(item.id),
+          onRemove: () => cubit.removePendingItem(item.id),
         ));
       }
     }
 
     return widgets;
-  }
-
-  void _removeAllInGroup(BuildContext context, String groupId) {
-    final cubit = context.read<VoiceChatCubit>();
-    final state = cubit.state;
-    if (state is! VoiceChatReady) return;
-
-    // Eliminar todos los items del grupo
-    final idsToRemove = state.pendingItems
-        .where((i) => i.batchGroupId == groupId)
-        .map((i) => i.id)
-        .toList();
-
-    for (final id in idsToRemove) {
-      cubit.removePendingItem(id);
-    }
-  }
-
-  /// Construye widgets para los previews de batch.
-  List<Widget> _buildPreviewCards(BuildContext context, VoiceChatReady state) {
-    return state.pendingPreviews.map((preview) {
-      return PendingPreviewCard(
-        key: ValueKey('preview_${preview.id}'),
-        preview: preview,
-        onRemove: () => context.read<VoiceChatCubit>().removePendingPreview(preview.id),
-      );
-    }).toList();
-  }
-
-  bool _isCreationAction(AssistantAction action) {
-    return switch (action) {
-      AssistantAction.createReminder ||
-      AssistantAction.createNote ||
-      AssistantAction.createBatch => true,
-      _ => false,
-    };
-  }
-
-  int _getPendingCountForAction(AssistantResponse response) {
-    if (response.action == AssistantAction.createBatch) {
-      return response.batchCreateData?.items.length ?? 1;
-    }
-    return 1;
   }
 
   Widget _buildRecordingIndicator(bool isDark, VoiceChatReady state) {

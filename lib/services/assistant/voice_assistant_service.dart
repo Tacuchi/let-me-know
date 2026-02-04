@@ -1,4 +1,5 @@
 import 'models/assistant_response.dart';
+import 'models/preview_response.dart';
 
 /// Servicio para procesar transcripciones de voz usando el backend LLM.
 ///
@@ -19,13 +20,13 @@ abstract class VoiceAssistantService {
     List<Map<String, dynamic>> sessionItems = const [],
   });
 
-  /// Obtiene un preview de batch sin crear items individuales.
+  /// Obtiene preview(s) de batch sin crear items individuales.
   ///
-  /// El backend analiza si la transcripción describe un batch y retorna:
-  /// - PREVIEW_BATCH: resumen con estimatedCount, frequency, dateRange
+  /// El backend analiza si la transcripción describe batch(es) y retorna:
+  /// - Lista de PREVIEW_BATCH: puede ser múltiples si hay diferentes frecuencias
   /// - NO_ACTION: si es un item individual
   /// - CLARIFICATION_NEEDED: si falta información
-  Future<AssistantResponse> preview(String transcription);
+  Future<PreviewResponse> preview(String transcription);
 
   /// Verifica si el backend está disponible.
   Future<bool> isAvailable();

@@ -5,6 +5,7 @@ import 'models/assistant_request.dart';
 import 'models/assistant_response.dart';
 import 'models/memory_item.dart';
 import 'models/preview_request.dart';
+import 'models/preview_response.dart';
 import 'voice_assistant_service.dart';
 
 /// Implementación del servicio de asistente de voz.
@@ -44,7 +45,7 @@ class VoiceAssistantServiceImpl implements VoiceAssistantService {
   }
 
   @override
-  Future<AssistantResponse> preview(String transcription) async {
+  Future<PreviewResponse> preview(String transcription) async {
     final request = PreviewRequest(
       transcription: transcription,
       currentTime: _getLocalTime(),
