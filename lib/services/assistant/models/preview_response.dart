@@ -32,6 +32,16 @@ class PreviewResponse {
   bool get isNoAction =>
       previews.length == 1 && previews.first.action == AssistantAction.noAction;
 
+  /// Verifica si es un error de servicio.
+  bool get isServiceError =>
+      previews.any((p) => p.action == AssistantAction.serviceError);
+
+  /// Obtiene el primer error de servicio (si existe).
+  ServiceErrorData? get serviceError {
+    final errorItem = previews.where((p) => p.action == AssistantAction.serviceError).firstOrNull;
+    return errorItem?.serviceErrorData;
+  }
+
   /// Obtiene solo los previews de batch.
   List<PreviewItem> get batchPreviews =>
       previews.where((p) => p.action == AssistantAction.previewBatch).toList();
@@ -69,11 +79,16 @@ class PreviewItem {
   NoActionData? get noActionData =>
       action == AssistantAction.noAction ? data as NoActionData : null;
 
+  /// Datos tipados para SERVICE_ERROR.
+  ServiceErrorData? get serviceErrorData =>
+      action == AssistantAction.serviceError ? data as ServiceErrorData : null;
+
   static AssistantAction _parseAction(String action) {
     return switch (action) {
       'PREVIEW_BATCH' => AssistantAction.previewBatch,
       'CLARIFICATION_NEEDED' => AssistantAction.clarificationNeeded,
       'NO_ACTION' => AssistantAction.noAction,
+      'SERVICE_ERROR' => AssistantAction.serviceError,
       _ => AssistantAction.noAction,
     };
   }
@@ -86,6 +101,7 @@ class PreviewItem {
       AssistantAction.previewBatch => PreviewData.fromJson(map),
       AssistantAction.clarificationNeeded => ClarificationData.fromJson(map),
       AssistantAction.noAction => NoActionData.fromJson(map),
+      AssistantAction.serviceError => ServiceErrorData.fromJson(map),
       _ => null,
     };
   }

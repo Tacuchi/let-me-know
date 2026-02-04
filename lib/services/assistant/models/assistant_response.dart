@@ -14,6 +14,7 @@ enum AssistantAction {
   queryResponse,
   clarificationNeeded,
   noAction,
+  serviceError,
 }
 
 /// Respuesta del backend LLM.
@@ -81,6 +82,13 @@ class AssistantResponse {
   NoActionData? get noActionData =>
       action == AssistantAction.noAction ? data as NoActionData : null;
 
+  /// Datos tipados para SERVICE_ERROR.
+  ServiceErrorData? get serviceErrorData =>
+      action == AssistantAction.serviceError ? data as ServiceErrorData : null;
+
+  /// Verifica si es un error de servicio.
+  bool get isServiceError => action == AssistantAction.serviceError;
+
   static AssistantAction _parseAction(String action) {
     return switch (action) {
       'CREATE_REMINDER' => AssistantAction.createReminder,
@@ -94,6 +102,7 @@ class AssistantResponse {
       'QUERY_RESPONSE' => AssistantAction.queryResponse,
       'CLARIFICATION_NEEDED' => AssistantAction.clarificationNeeded,
       'NO_ACTION' => AssistantAction.noAction,
+      'SERVICE_ERROR' => AssistantAction.serviceError,
       _ => AssistantAction.noAction,
     };
   }
@@ -114,6 +123,7 @@ class AssistantResponse {
       AssistantAction.queryResponse => QueryResponseData.fromJson(map),
       AssistantAction.clarificationNeeded => ClarificationData.fromJson(map),
       AssistantAction.noAction => NoActionData.fromJson(map),
+      AssistantAction.serviceError => ServiceErrorData.fromJson(map),
     };
   }
 }
@@ -335,6 +345,27 @@ class NoActionData {
   factory NoActionData.fromJson(Map<String, dynamic> json) {
     return NoActionData(
       reason: json['reason'] as String?,
+    );
+  }
+}
+
+/// Datos cuando hay un error del servicio.
+class ServiceErrorData {
+  final String errorCode;
+  final String message;
+  final String? details;
+
+  const ServiceErrorData({
+    required this.errorCode,
+    required this.message,
+    this.details,
+  });
+
+  factory ServiceErrorData.fromJson(Map<String, dynamic> json) {
+    return ServiceErrorData(
+      errorCode: json['errorCode'] as String? ?? 'UNKNOWN_ERROR',
+      message: json['message'] as String? ?? 'Error desconocido',
+      details: json['details'] as String?,
     );
   }
 }

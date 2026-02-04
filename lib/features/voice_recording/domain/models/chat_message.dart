@@ -122,6 +122,20 @@ class ChatMessage extends Equatable {
     );
   }
 
+  /// Crea un mensaje de respuesta del sistema solo con texto.
+  /// Útil para respuestas que no tienen un AssistantResponse completo.
+  factory ChatMessage.systemResponseText({
+    required String id,
+    required String text,
+  }) {
+    return ChatMessage(
+      id: id,
+      type: ChatMessageType.systemResponse,
+      timestamp: DateTime.now(),
+      text: text,
+    );
+  }
+
   @override
   List<Object?> get props => [id, type, timestamp, text, errorText, isVoice, originalTranscription];
 }

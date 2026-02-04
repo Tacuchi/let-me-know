@@ -95,14 +95,26 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     ));
 
     try {
+      // Construir historial de conversación para contexto multi-turno
+      final history = _buildConversationHistory(updatedMessages);
+
       // Primero intentar obtener preview (para batches)
-      final previewResponse = await _assistantService.preview(text);
+      final previewResponse = await _assistantService.preview(
+        text,
+        conversationHistory: history,
+      );
 
       if (isClosed) return;
 
+      // Verificar error de servicio primero
+      if (previewResponse.isServiceError) {
+        _handlePreviewResponse(previewResponse, text);
+        return;
+      }
+
       if (previewResponse.hasPreviewBatches) {
         // Es un batch - mostrar preview(s)
-        _handlePreviewResponse(previewResponse);
+        _handlePreviewResponse(previewResponse, text);
         return;
       }
 
@@ -114,6 +126,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       final response = await _assistantService.process(
         text,
         sessionItems: sessionItems,
+        conversationHistory: history,
       );
 
       if (isClosed) return;
@@ -152,14 +165,26 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     ));
 
     try {
+      // Construir historial de conversación para contexto multi-turno
+      final history = _buildConversationHistory(updatedMessages);
+
       // Primero intentar obtener preview (para batches)
-      final previewResponse = await _assistantService.preview(transcription);
+      final previewResponse = await _assistantService.preview(
+        transcription,
+        conversationHistory: history,
+      );
 
       if (isClosed) return;
 
+      // Verificar error de servicio primero
+      if (previewResponse.isServiceError) {
+        _handlePreviewResponse(previewResponse, transcription);
+        return;
+      }
+
       if (previewResponse.hasPreviewBatches) {
         // Es un batch - mostrar preview(s)
-        _handlePreviewResponse(previewResponse);
+        _handlePreviewResponse(previewResponse, transcription);
         return;
       }
 
@@ -171,6 +196,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       final response = await _assistantService.process(
         transcription,
         sessionItems: sessionItems,
+        conversationHistory: history,
       );
 
       if (isClosed) return;
@@ -186,6 +212,14 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     final current = state;
     if (current is! VoiceChatReady) return;
 
+    // Verificar si es un error de servicio
+    if (response.isServiceError) {
+      final errorData = response.serviceErrorData;
+      final errorText = errorData?.message ?? 'Error del servicio de IA';
+      _handleError(Exception(errorText), transcription);
+      return;
+    }
+
     final isCreation = _isCreationAction(response.action);
 
     if (isCreation) {
@@ -198,13 +232,21 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     }
   }
 
-  void _handlePreviewResponse(PreviewResponse response) {
+  void _handlePreviewResponse(PreviewResponse response, [String? transcription]) {
     final current = state;
     if (current is! VoiceChatReady) return;
 
+    // Verificar si es un error de servicio
+    if (response.isServiceError) {
+      final errorData = response.serviceError;
+      final errorText = errorData?.message ?? 'Error del servicio de IA';
+      _handleError(Exception(errorText), transcription ?? '');
+      return;
+    }
+
     // Crear mensaje primero para obtener su ID
     final messageId = _uuid.v4();
-    final systemMessage = ChatMessage.systemAction(
+    final systemMessage = ChatMessage.systemResponseText(
       id: messageId,
       text: response.spokenResponse,
     );
@@ -345,14 +387,23 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
     final current = state;
     if (current is! VoiceChatReady) return;
 
+    final errorStr = error.toString();
     String errorText;
-    if (error.toString().contains('ApiConnectionException') ||
-        error.toString().contains('SocketException')) {
+
+    // Errores de servicio de IA (desde SERVICE_ERROR del backend)
+    if (errorStr.contains('servicio de IA') ||
+        errorStr.contains('créditos') ||
+        errorStr.contains('no está disponible') ||
+        errorStr.contains('Demasiadas solicitudes')) {
+      // Usar el mensaje directamente (ya viene formateado del backend)
+      errorText = errorStr.replaceAll('Exception: ', '');
+    } else if (errorStr.contains('ApiConnectionException') ||
+        errorStr.contains('SocketException')) {
       errorText = 'No se pudo conectar al servidor';
-    } else if (error.toString().contains('ApiException')) {
-      errorText = 'Error del servidor: $error';
+    } else if (errorStr.contains('ApiException')) {
+      errorText = 'Error del servidor. Por favor intenta de nuevo.';
     } else {
-      errorText = 'Error inesperado: $error';
+      errorText = 'Hubo un problema procesando tu solicitud. Intenta de nuevo.';
     }
 
     final errorMessage = ChatMessage.systemError(
@@ -392,14 +443,24 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
 
     // Reintentar el procesamiento
     final transcription = errorMessage!.originalTranscription!;
-    
+    final history = _buildConversationHistory(updatedMessages);
+
     try {
-      final previewResponse = await _assistantService.preview(transcription);
+      final previewResponse = await _assistantService.preview(
+        transcription,
+        conversationHistory: history,
+      );
 
       if (isClosed) return;
 
+      // Verificar error de servicio primero
+      if (previewResponse.isServiceError) {
+        _handlePreviewResponse(previewResponse, transcription);
+        return;
+      }
+
       if (previewResponse.hasPreviewBatches) {
-        _handlePreviewResponse(previewResponse);
+        _handlePreviewResponse(previewResponse, transcription);
         return;
       }
 
@@ -410,6 +471,7 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
       final response = await _assistantService.process(
         transcription,
         sessionItems: sessionItems,
+        conversationHistory: history,
       );
 
       if (isClosed) return;
@@ -567,6 +629,34 @@ class VoiceChatCubit extends Cubit<VoiceChatState> {
   // ─────────────────────────────────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────────────────────────────────
+
+  /// Construye el historial de conversación a partir de los mensajes del chat.
+  /// Convierte mensajes user/assistant al formato {role, content} para el LLM.
+  /// Excluye errores y limita a los últimos 10 mensajes.
+  List<Map<String, String>> _buildConversationHistory(List<ChatMessage> messages) {
+    final history = <Map<String, String>>[];
+    for (final msg in messages) {
+      switch (msg.type) {
+        case ChatMessageType.userMessage:
+        case ChatMessageType.userVoice:
+          if (msg.text != null && msg.text!.isNotEmpty) {
+            history.add({'role': 'user', 'content': msg.text!});
+          }
+        case ChatMessageType.systemResponse:
+        case ChatMessageType.systemAction:
+          if (msg.text != null && msg.text!.isNotEmpty) {
+            history.add({'role': 'assistant', 'content': msg.text!});
+          }
+        case ChatMessageType.systemError:
+          break;
+      }
+    }
+    // Limitar a los últimos 10 mensajes
+    if (history.length > 10) {
+      return history.sublist(history.length - 10);
+    }
+    return history;
+  }
 
   bool _isCreationAction(AssistantAction action) {
     return switch (action) {

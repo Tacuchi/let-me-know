@@ -24,6 +24,7 @@ class VoiceAssistantServiceImpl implements VoiceAssistantService {
   Future<AssistantResponse> process(
     String transcription, {
     List<Map<String, dynamic>> sessionItems = const [],
+    List<Map<String, String>> conversationHistory = const [],
   }) async {
     final memory = await _buildMemory();
     final request = AssistantRequest(
@@ -32,24 +33,26 @@ class VoiceAssistantServiceImpl implements VoiceAssistantService {
       locale: 'es',
       memory: memory,
       sessionItems: sessionItems,
+      conversationHistory: conversationHistory,
     );
 
     return _apiClient.process(request);
   }
 
-  /// Obtiene la hora local en formato ISO8601 sin offset.
-  /// El backend usa LocalDateTime y el LLM interpreta "hoy" basándose en esta hora.
   String _getLocalTime() {
-    // Formato: YYYY-MM-DDTHH:mm:ss (hora local del dispositivo)
     return DateTime.now().toIso8601String().split('.').first;
   }
 
   @override
-  Future<PreviewResponse> preview(String transcription) async {
+  Future<PreviewResponse> preview(
+    String transcription, {
+    List<Map<String, String>> conversationHistory = const [],
+  }) async {
     final request = PreviewRequest(
       transcription: transcription,
       currentTime: _getLocalTime(),
       locale: 'es',
+      conversationHistory: conversationHistory,
     );
 
     return _apiClient.preview(request);
