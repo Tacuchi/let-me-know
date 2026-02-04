@@ -675,7 +675,7 @@ class _VoiceAssistantViewState extends State<VoiceAssistantView> {
     setState(() => _isProcessing = true);
 
     try {
-      final response = await _assistantService.process(_transcription!);
+      final response = await _assistantService.process(_transcription!, sessionItems: const []);
 
       if (!mounted) return;
 

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../core/services/feedback_service.dart';
-import '../widgets/voice_assistant_view.dart';
+import '../../application/cubit/voice_chat_cubit.dart';
+import '../widgets/voice_chat_view.dart';
 
 /// Página de asistente de voz unificada.
 /// Permite crear recordatorios, notas, consultar y más con un solo flujo.
@@ -86,7 +87,10 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: const VoiceAssistantView(),
+          child: BlocProvider(
+            create: (_) => getIt<VoiceChatCubit>(),
+            child: const VoiceChatView(),
+          ),
         ),
       ),
     );

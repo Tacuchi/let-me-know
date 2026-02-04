@@ -6,6 +6,7 @@ enum AssistantAction {
   createReminder,
   createNote,
   createBatch,
+  previewBatch,
   updateReminder,
   completeReminder,
   deleteReminder,
@@ -60,6 +61,10 @@ class AssistantResponse {
   BatchCreateData? get batchCreateData =>
       action == AssistantAction.createBatch ? data as BatchCreateData : null;
 
+  /// Datos tipados para PREVIEW_BATCH.
+  PreviewData? get previewData =>
+      action == AssistantAction.previewBatch ? data as PreviewData : null;
+
   /// Datos tipados para DELETE_GROUP.
   DeleteGroupData? get deleteGroupData =>
       action == AssistantAction.deleteGroup ? data as DeleteGroupData : null;
@@ -81,6 +86,7 @@ class AssistantResponse {
       'CREATE_REMINDER' => AssistantAction.createReminder,
       'CREATE_NOTE' => AssistantAction.createNote,
       'CREATE_BATCH' => AssistantAction.createBatch,
+      'PREVIEW_BATCH' => AssistantAction.previewBatch,
       'UPDATE_REMINDER' => AssistantAction.updateReminder,
       'COMPLETE_REMINDER' => AssistantAction.completeReminder,
       'DELETE_REMINDER' => AssistantAction.deleteReminder,
@@ -100,6 +106,7 @@ class AssistantResponse {
       AssistantAction.createReminder => CreateReminderData.fromJson(map),
       AssistantAction.createNote => CreateNoteData.fromJson(map),
       AssistantAction.createBatch => BatchCreateData.fromJson(map),
+      AssistantAction.previewBatch => PreviewData.fromJson(map),
       AssistantAction.updateReminder => UpdateReminderData.fromJson(map),
       AssistantAction.completeReminder => CompleteReminderData.fromJson(map),
       AssistantAction.deleteReminder => DeleteReminderData.fromJson(map),
@@ -245,6 +252,36 @@ class DeleteGroupData {
   factory DeleteGroupData.fromJson(Map<String, dynamic> json) {
     return DeleteGroupData(
       groupId: json['groupId'] as String,
+    );
+  }
+}
+
+/// Datos para preview de batch (resumen sin items individuales).
+class PreviewData {
+  final String summary;
+  final String groupLabel;
+  final int estimatedCount;
+  final String frequency;
+  final String dateRange;
+  final String originalRequest;
+
+  const PreviewData({
+    required this.summary,
+    required this.groupLabel,
+    required this.estimatedCount,
+    required this.frequency,
+    required this.dateRange,
+    required this.originalRequest,
+  });
+
+  factory PreviewData.fromJson(Map<String, dynamic> json) {
+    return PreviewData(
+      summary: json['summary'] as String? ?? '',
+      groupLabel: json['groupLabel'] as String? ?? 'Tratamiento',
+      estimatedCount: json['estimatedCount'] as int? ?? 0,
+      frequency: json['frequency'] as String? ?? '',
+      dateRange: json['dateRange'] as String? ?? '',
+      originalRequest: json['originalRequest'] as String? ?? '',
     );
   }
 }

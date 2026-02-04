@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../core/config/api_config.dart';
 import 'models/assistant_request.dart';
 import 'models/assistant_response.dart';
+import 'models/preview_request.dart';
 
 /// Excepciones del cliente API.
 class ApiException implements Exception {
@@ -40,6 +41,46 @@ class AssistantApiClient {
   /// Procesa una transcripción y retorna la respuesta del LLM.
   Future<AssistantResponse> process(AssistantRequest request) async {
     final url = Uri.parse('$_baseUrl${ApiConfig.processEndpoint}');
+
+    try {
+      final response = await _client
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(request.toJson()),
+          )
+          .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return AssistantResponse.fromJson(json);
+      } else {
+        throw ApiException(
+          'Error del servidor: ${response.reasonPhrase}',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      throw const ApiConnectionException();
+    } on http.ClientException {
+      throw const ApiConnectionException();
+    } on FormatException catch (e) {
+      throw ApiException('Respuesta inválida del servidor: $e');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      if (e.toString().contains('TimeoutException')) {
+        throw const ApiTimeoutException();
+      }
+      throw ApiException('Error inesperado: $e');
+    }
+  }
+
+  /// Obtiene un preview de batch sin crear items individuales.
+  Future<AssistantResponse> preview(PreviewRequest request) async {
+    final url = Uri.parse('$_baseUrl${ApiConfig.previewEndpoint}');
 
     try {
       final response = await _client

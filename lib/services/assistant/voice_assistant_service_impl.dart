@@ -4,6 +4,7 @@ import 'assistant_api_client.dart';
 import 'models/assistant_request.dart';
 import 'models/assistant_response.dart';
 import 'models/memory_item.dart';
+import 'models/preview_request.dart';
 import 'voice_assistant_service.dart';
 
 /// Implementación del servicio de asistente de voz.
@@ -19,13 +20,17 @@ class VoiceAssistantServiceImpl implements VoiceAssistantService {
   );
 
   @override
-  Future<AssistantResponse> process(String transcription) async {
+  Future<AssistantResponse> process(
+    String transcription, {
+    List<Map<String, dynamic>> sessionItems = const [],
+  }) async {
     final memory = await _buildMemory();
     final request = AssistantRequest(
       transcription: transcription,
       currentTime: _getLocalTime(),
       locale: 'es',
       memory: memory,
+      sessionItems: sessionItems,
     );
 
     return _apiClient.process(request);
@@ -36,6 +41,17 @@ class VoiceAssistantServiceImpl implements VoiceAssistantService {
   String _getLocalTime() {
     // Formato: YYYY-MM-DDTHH:mm:ss (hora local del dispositivo)
     return DateTime.now().toIso8601String().split('.').first;
+  }
+
+  @override
+  Future<AssistantResponse> preview(String transcription) async {
+    final request = PreviewRequest(
+      transcription: transcription,
+      currentTime: _getLocalTime(),
+      locale: 'es',
+    );
+
+    return _apiClient.preview(request);
   }
 
   @override

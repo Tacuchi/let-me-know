@@ -14,6 +14,9 @@ class ApiConfig {
   /// Endpoint para procesar transcripciones.
   static const String processEndpoint = '/api/v1/process';
 
+  /// Endpoint para preview de batches (resumen sin crear items).
+  static const String previewEndpoint = '/api/v1/preview';
+
   /// Endpoint de health check.
   static const String healthEndpoint = '/health';
 }
