@@ -98,6 +98,10 @@ class Reminder extends Equatable {
     );
   }
 
+  /// ID efectivo para alarma/notificación.
+  /// Usa notificationId si existe, o genera uno determinista desde el id.
+  int get effectiveAlarmId => notificationId ?? id.hashCode.abs() % 2147483647;
+
   /// Si es una nota (tipo location) en lugar de un recordatorio con alarma
   bool get isNote => type.isNote;
 

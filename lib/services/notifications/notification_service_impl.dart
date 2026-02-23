@@ -161,8 +161,7 @@ class NotificationServiceImpl implements NotificationService {
     if (reminder.scheduledAt == null) return;
     if (reminder.scheduledAt!.isBefore(DateTime.now())) return;
 
-    final notificationId = reminder.notificationId ??
-        reminder.id.hashCode.abs() % 2147483647;
+    final notificationId = reminder.effectiveAlarmId;
 
     // Seleccionar canal según importancia
     final channelId = _isHighImportance(reminder)

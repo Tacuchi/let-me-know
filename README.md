@@ -72,12 +72,7 @@ flutter run
 
 ## 📖 Documentación
 
-| Documento | Descripción |
-|-----------|-------------|
-| [Requerimientos Funcionales](docs/requerimientos-funcionales.md) | Casos de uso y especificaciones |
-| [Arquitectura](docs/ARQUITECTURA.md) | Clean Architecture y patrones |
-| [Backend Options](docs/backend-options.md) | Análisis de opciones de backend |
-| [UI Specs](docs/) | Especificaciones de pantallas |
+La documentación del proyecto se encuentra centralizada en el [hub del workspace](https://github.com/tacuchi/personal-lab/tree/main/projects/let-me-know/docs).
 
 ## 🗺️ Roadmap
 

@@ -17,7 +17,6 @@ import '../../domain/entities/reminder.dart';
 import '../../domain/entities/reminder_importance.dart';
 import '../../domain/entities/reminder_status.dart';
 import '../../domain/entities/reminder_type.dart';
-import '../widgets/alarm_ringing_banner.dart';
 
 class ReminderDetailPage extends StatefulWidget {
   const ReminderDetailPage({super.key});
@@ -337,29 +336,6 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
     );
   }
 
-  Future<void> _stopAlarm(Reminder reminder) async {
-    if (reminder.notificationId != null) {
-      await _alarmService.stopAlarm(reminder.notificationId!);
-      if (mounted) {
-        setState(() => _isAlarmRinging = false);
-        _showSnackBar(context, 'Alarma detenida');
-      }
-    }
-  }
-
-  Future<void> _snoozeAlarm(Reminder reminder) async {
-    if (reminder.notificationId != null) {
-      // Capturar el cubit antes del await
-      final cubit = context.read<ReminderDetailCubit>();
-      await _alarmService.stopAlarm(reminder.notificationId!);
-      // Posponer el recordatorio
-      cubit.snooze(const Duration(minutes: 5));
-      if (mounted) {
-        setState(() => _isAlarmRinging = false);
-      }
-    }
-  }
-
   Widget _buildContent(BuildContext context, Reminder reminder) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isNote = reminder.isNote;
@@ -370,13 +346,6 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Banner de alarma sonando (si aplica)
-          if (_isAlarmRinging && !isCompleted)
-            AlarmRingingBanner(
-              onStop: () => _stopAlarm(reminder),
-              onSnooze: () => _snoozeAlarm(reminder),
-            ),
-
           // Card principal: Tipo + Título
           _buildHeaderCard(reminder, isDark),
           const SizedBox(height: 16),
@@ -401,9 +370,6 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
           else
             _buildActionButtons(context, reminder, isDark),
 
-          // Link de eliminar
-          const SizedBox(height: 24),
-          _buildDeleteLink(context, isDark),
         ],
       ),
     );
@@ -501,6 +467,46 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
       ),
       child: Column(
         children: [
+          // Chip de alarma sonando
+          if (_isAlarmRinging && reminder.status != ReminderStatus.completed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.alarm_on_rounded,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Sonando',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Fecha y hora principal
           Row(
             children: [
@@ -772,9 +778,13 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
           SizedBox(
             height: 60,
             child: FilledButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 HapticFeedback.mediumImpact();
-                cubit.markAsCompleted();
+                await _alarmService.stopAlarm(reminder.effectiveAlarmId);
+                if (mounted) {
+                  setState(() => _isAlarmRinging = false);
+                  cubit.markAsCompleted();
+                }
               },
               icon: const Icon(Icons.check_rounded, size: 26),
               label: const Text(
@@ -843,6 +853,30 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
             ),
           ),
         ),
+
+        // Botón de eliminar
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 60,
+          child: OutlinedButton.icon(
+            onPressed: () => _showDeleteConfirmation(context),
+            icon: const Icon(Icons.delete_outline_rounded, size: 26),
+            label: const Text(
+              'Eliminar',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.error,
+              side: BorderSide(
+                color: AppColors.error.withValues(alpha: 0.5),
+                width: 2,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -869,26 +903,6 @@ class _ReminderDetailPageState extends State<ReminderDetailPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDeleteLink(BuildContext context, bool isDark) {
-    return Center(
-      child: TextButton(
-        onPressed: () => _showDeleteConfirmation(context),
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.error.withValues(alpha: 0.8),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        ),
-        child: const Text(
-          'Eliminar recordatorio',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            decoration: TextDecoration.underline,
-          ),
-        ),
       ),
     );
   }

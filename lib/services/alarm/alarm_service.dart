@@ -93,8 +93,7 @@ class AlarmServiceImpl implements AlarmService {
     final minTime = now.add(const Duration(seconds: 2));
     if (reminder.scheduledAt!.isBefore(minTime)) return false;
 
-    final alarmId = reminder.notificationId ?? 
-        reminder.id.hashCode.abs() % 2147483647;
+    final alarmId = reminder.effectiveAlarmId;
 
     final alarmSettings = AlarmSettings(
       id: alarmId,
@@ -166,8 +165,7 @@ class AlarmServiceImpl implements AlarmService {
 
   @override
   bool isRingingForReminder(Reminder reminder) {
-    if (reminder.notificationId == null) return false;
-    return isAlarmRinging(reminder.notificationId!);
+    return isAlarmRinging(reminder.effectiveAlarmId);
   }
 
   @override
