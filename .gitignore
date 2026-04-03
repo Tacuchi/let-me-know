@@ -116,6 +116,9 @@ test-results/
 # Logs
 *.log
 
+# Claude Code (personal, not shared)
+CLAUDE.local.md
+
 # Misc
 IconKitchen-Output/
 .fvm/
