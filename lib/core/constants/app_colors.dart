@@ -2,125 +2,143 @@ import 'package:flutter/material.dart';
 
 abstract final class AppColors {
   // ==========================================================================
-  // PALETA PRINCIPAL - VERDE
+  // PALETA PRINCIPAL - PÚRPURA / INDIGO ("Resonant Horizon")
   // ==========================================================================
-  
-  // Verde primario (usado en acciones principales, botones success)
-  static const Color primary = Color(0xFF2E7D32);        // Verde bosque
-  static const Color primaryLight = Color(0xFF4CAF50);   // Verde medio
-  static const Color primaryDark = Color(0xFF1B5E20);    // Verde muy oscuro
-  static const Color primarySurface = Color(0xFFE8F5E9); // Verde muy claro (bg)
-  
-  // Verde para tema oscuro
-  static const Color primaryDarkMode = Color(0xFF66BB6A);     // Verde vibrante
-  static const Color primarySurfaceDark = Color(0xFF1A2E1A);  // Verde oscuro (bg)
+
+  // Primario: deep indigo → light purple
+  static const Color primary = Color(0xFF504DCD);
+  static const Color primaryLight = Color(0xFF7D7CFE);
+  static const Color primaryDark = Color(0xFF3A38A0);
+  static const Color primarySurface = Color(0xFFF2F3FA);
+
+  // Modo oscuro
+  static const Color primaryDarkMode = Color(0xFF7D7CFE);
+  static const Color primarySurfaceDark = Color(0xFF1A1A2E);
 
   // ==========================================================================
   // TEMA CLARO
   // ==========================================================================
-  
-  // Fondos
-  static const Color bgPrimary = Color(0xFFF5F9F5);      // Verde muy sutil
-  static const Color bgSecondary = Color(0xFFFFFFFF);    // Blanco
-  static const Color bgTertiary = Color(0xFFEDF5ED);     // Verde pálido
 
-  // Acentos (verde lima para acciones)
-  static const Color accentPrimary = Color(0xFF8BC34A);   // Verde lima (FAB, botones)
-  static const Color accentSecondary = Color(0xFFAED581); // Verde lima claro
-  static const Color accentTertiary = Color(0xFF689F38); // Verde lima oscuro
+  // Fondos (surface tiers)
+  static const Color bgPrimary = Color(0xFFF9F9FE); // surface base
+  static const Color bgSecondary = Color(
+    0xFFFFFFFF,
+  ); // surface_container_lowest
+  static const Color bgTertiary = Color(0xFFF2F3FA); // surface_container_low
+
+  // Acentos (primary / primary_container / tertiary)
+  static const Color accentPrimary = Color(0xFF504DCD); // primary
+  static const Color accentSecondary = Color(0xFF7D7CFE); // primary_container
+  static const Color accentTertiary = Color(0xFF007AFF); // tertiary / info
 
   // Texto
-  static const Color textPrimary = Color(0xFF1B2E1B);    // Verde muy oscuro
-  static const Color textSecondary = Color(0xFF4A5D4A);  // Verde grisáceo
-  static const Color textHelper = Color(0xFF6B7B6B);     // Verde claro
-  static const Color textOnPrimary = Color(0xFFFFFFFF);  // Blanco
+  static const Color textPrimary = Color(0xFF2E333A); // on_surface
+  static const Color textSecondary = Color(0xFF5D5F63); // secondary
+  static const Color textHelper = Color(0xFF6B7280); // hint / placeholder
+  static const Color textOnPrimary = Color(0xFFFFFFFF);
 
-  // Divisores
-  static const Color divider = Color(0xFFD0DCD0);        // Verde gris claro
-  static const Color outline = Color(0xFFB8C8B8);
-  static const Color shadow = Color(0x1A1B5E20);         // Sombra verde
-  static const Color scrim = Color(0x521B5E20);
+  // Separadores y contornos
+  static const Color divider = Color(0xFFE2E2E7);
+  static const Color outline = Color(0xFFAEB2BB);
+  static const Color shadow = Color(0x0D000000); // 5% negro
+  static const Color scrim = Color(0x52000000);
 
   // ==========================================================================
   // TEMA OSCURO
   // ==========================================================================
-  
-  // Fondos oscuros - gris neutro con tinte verde muy sutil
-  static const Color bgPrimaryDark = Color(0xFF121212);    // Gris casi negro
-  static const Color bgSecondaryDark = Color(0xFF1E1E1E);  // Gris oscuro para cards
-  static const Color bgTertiaryDark = Color(0xFF2D2D2D);   // Gris medio para elevados
 
-  // Acentos en modo oscuro
-  static const Color accentPrimaryDark = Color(0xFFAED581);   // Verde lima claro
-  static const Color accentSecondaryDark = Color(0xFFC5E1A5); // Verde lima muy claro
+  static const Color bgPrimaryDark = Color(0xFF0C0E12);
+  static const Color bgSecondaryDark = Color(0xFF1A1A2E);
+  static const Color bgTertiaryDark = Color(0xFF252538);
 
-  // Texto en modo oscuro - colores claros para buen contraste
-  static const Color textPrimaryDark = Color(0xFFF5F5F5);   // Casi blanco
-  static const Color textSecondaryDark = Color(0xFFB8D4B8); // Verde claro
-  static const Color textHelperDark = Color(0xFF8CA88C);    // Verde medio
+  static const Color accentPrimaryDark = Color(0xFF7D7CFE);
+  static const Color accentSecondaryDark = Color(0xFFA5A4FF);
 
-  // Divisores en modo oscuro - grises neutros
-  static const Color dividerDark = Color(0xFF333333);      // Gris oscuro
-  static const Color outlineDark = Color(0xFF444444);      // Gris medio
+  static const Color textPrimaryDark = Color(0xFFF5F5F5);
+  static const Color textSecondaryDark = Color(0xFFB8B8D4);
+  static const Color textHelperDark = Color(0xFF8A8AAA);
+
+  static const Color dividerDark = Color(0xFF333350);
+  static const Color outlineDark = Color(0xFF444465);
+
+  // ==========================================================================
+  // TOKENS ESPECÍFICOS DEL NUEVO SISTEMA
+  // ==========================================================================
+
+  // Chips / filtros
+  static const Color chipInactive = Color(0xFFE2E2E7);
+  static const Color chipInactiveDark = Color(0xFF333350);
+  static const Color chipActiveText = Color(0xFFFFFFFF);
+
+  // Badges informativos
+  static const Color infoBadgeBg = Color(0x1A007AFF); // 10% blue
+  static const Color infoBadgeText = Color(0xFF005BC2);
+
+  // Botón secondary (Imagen / Escribir)
+  static const Color buttonSecondaryBg = Color(0xFFE5E8F0);
+  static const Color buttonSecondaryBgDark = Color(0xFF252538);
+
+  // Section headers
+  static const Color categoryLabel = Color(0xFF777B83);
+
+  // Estados de error con gradiente
+  static const Color errorAccent = Color(0xFFFA746F);
+  static const Color errorDeep = Color(0xFFA83836);
 
   // ==========================================================================
   // ESTADOS
   // ==========================================================================
-  
-  static const Color success = Color(0xFF4CAF50);      // Verde éxito
-  static const Color error = Color(0xFFE57373);        // Rojo error
+
+  static const Color success = Color(0xFF4CAF50);
+  static const Color error = Color(0xFFE57373);
   static const Color errorContainer = Color(0xFFFFDAD6);
-  static const Color warning = Color(0xFFFFB74D);      // Ámbar advertencia
-  static const Color recording = Color(0xFF689F38);    // Verde lima oscuro grabando
-  
-  // Estados de recordatorios
-  static const Color completed = Color(0xFF81C784);    // Verde completado
-  static const Color pending = Color(0xFFFFF3E0);      // Crema pendiente
-  static const Color overdue = Color(0xFFEF9A9A);      // Rojo suave vencido
+  static const Color warning = Color(0xFFFFB74D);
+  static const Color recording = Color(0xFF504DCD);
+
+  static const Color completed = Color(0xFF81C784);
+  static const Color pending = Color(0xFFFFF3E0);
+  static const Color overdue = Color(0xFFEF9A9A);
 
   // ==========================================================================
   // COLORES POR TIPO DE RECORDATORIO
   // ==========================================================================
-  
-  static const Color reminderMedication = Color(0xFF26A69A);  // Teal - salud
-  static const Color reminderAppointment = Color(0xFF5C6BC0); // Indigo - citas
-  static const Color reminderCall = Color(0xFF7E57C2);        // Púrpura - llamadas
-  static const Color reminderShopping = Color(0xFFFFB74D);    // Ámbar - compras
-  static const Color reminderTask = Color(0xFF66BB6A);        // Verde - tareas
-  static const Color reminderEvent = Color(0xFF42A5F5);       // Azul - eventos
-  static const Color reminderLocation = Color(0xFF78909C);    // Gris azul - notas
+
+  static const Color reminderMedication = Color(0xFFA83836); // error/health
+  static const Color reminderAppointment = Color(0xFF007AFF); // tertiary/blue
+  static const Color reminderCall = Color(0xFF7D7CFE); // primary_container
+  static const Color reminderShopping = Color(0xFFFFB74D); // ámbar
+  static const Color reminderTask = Color(0xFF66BB6A); // verde
+  static const Color reminderEvent = Color(0xFF42A5F5); // azul claro
+  static const Color reminderLocation = Color(0xFF78909C); // gris azul
 
   // ==========================================================================
   // GRADIENTES
   // ==========================================================================
-  
+
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primary, primaryDark],
+    colors: [primary, primaryLight],
   );
 
-  static const LinearGradient accentGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [accentPrimary, Color(0xFF689F38)],
-  );
-
-  static const LinearGradient surfaceGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [primarySurface, Color(0xFFC8E6C9)],
+  static const LinearGradient primaryGradientVertical = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [primary, primaryLight],
   );
 
   // ==========================================================================
-  // FUNCIONES ADAPTATIVAS
+  // HELPERS ADAPTATIVOS
   // ==========================================================================
-  
+
   static Color bgPrimaryAdaptive(Brightness brightness) =>
       brightness == Brightness.dark ? bgPrimaryDark : bgPrimary;
 
   static Color bgSecondaryAdaptive(Brightness brightness) =>
       brightness == Brightness.dark ? bgSecondaryDark : bgSecondary;
+
+  static Color bgTertiaryAdaptive(Brightness brightness) =>
+      brightness == Brightness.dark ? bgTertiaryDark : bgTertiary;
 
   static Color textPrimaryAdaptive(Brightness brightness) =>
       brightness == Brightness.dark ? textPrimaryDark : textPrimary;
@@ -136,4 +154,10 @@ abstract final class AppColors {
 
   static Color primaryAdaptive(Brightness brightness) =>
       brightness == Brightness.dark ? primaryDarkMode : primary;
+
+  static Color chipInactiveAdaptive(Brightness brightness) =>
+      brightness == Brightness.dark ? chipInactiveDark : chipInactive;
+
+  static Color buttonSecondaryBgAdaptive(Brightness brightness) =>
+      brightness == Brightness.dark ? buttonSecondaryBgDark : buttonSecondaryBg;
 }

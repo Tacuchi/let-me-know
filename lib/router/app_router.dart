@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/constants/constants.dart';
 import '../di/injection_container.dart';
 import '../features/alarm/presentation/pages/alarm_screen_page.dart';
+import '../features/design_showcase/presentation/pages/design_showcase_page.dart';
 import '../features/reminders/application/cubit/reminder_detail_cubit.dart';
 import '../features/reminders/presentation/pages/reminder_detail_page.dart';
 import '../features/reminders/presentation/pages/reminder_list_page.dart';
@@ -84,6 +85,12 @@ final appRouter = GoRouter(
         return AlarmScreenPage(reminderId: id);
       },
     ),
+    // Ruta: Design Showcase (dev only)
+    GoRoute(
+      path: AppRoutes.designShowcase,
+      name: AppRoutes.designShowcaseName,
+      builder: (context, state) => const DesignShowcasePage(),
+    ),
   ],
 );
 
@@ -125,11 +132,15 @@ class _AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
-    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final secondaryColor =
-        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final primaryColor =
-        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final textColor = isDark
+        ? AppColors.textPrimaryDark
+        : AppColors.textPrimary;
+    final secondaryColor = isDark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondary;
+    final primaryColor = isDark
+        ? AppColors.accentPrimaryDark
+        : AppColors.accentPrimary;
 
     return Drawer(
       backgroundColor: bgColor,
@@ -199,6 +210,27 @@ class _AppDrawer extends StatelessWidget {
               textColor: textColor,
               secondaryColor: secondaryColor,
               onTap: () => _selectDestination(context, 2),
+            ),
+            Divider(
+              color: isDark ? AppColors.dividerDark : AppColors.divider,
+              height: 1,
+              indent: AppSpacing.lg,
+              endIndent: AppSpacing.lg,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _DrawerItem(
+              icon: Icons.palette_outlined,
+              selectedIcon: Icons.palette_rounded,
+              label: 'Design Showcase',
+              isSelected: false,
+              primaryColor: primaryColor,
+              textColor: textColor,
+              secondaryColor: secondaryColor,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                Navigator.pop(context);
+                GoRouter.of(context).go(AppRoutes.designShowcase);
+              },
             ),
           ],
         ),
