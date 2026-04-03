@@ -101,7 +101,7 @@ class AlarmServiceImpl implements AlarmService {
       assetAudioPath: 'assets/sounds/alarm.mp3',
       loopAudio: true,
       vibrate: true,
-      warningNotificationOnKill: true,
+      warningNotificationOnKill: false,
       androidFullScreenIntent: true,
       payload: reminder.id, // Incluir reminderId para navegación
       volumeSettings: VolumeSettings.fade(

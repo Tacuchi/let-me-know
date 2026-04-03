@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../core/services/feedback_service.dart';
+import '../../../../router/app_router.dart';
 import '../../application/cubit/voice_chat_cubit.dart';
+import '../../application/cubit/voice_chat_state.dart';
 import '../widgets/voice_chat_view.dart';
 
-/// Página de asistente de voz unificada.
+/// Página de asistente de voz unificada (pantalla principal).
 /// Permite crear recordatorios, notas, consultar y más con un solo flujo.
 class VoiceRecordingPage extends StatefulWidget {
   const VoiceRecordingPage({super.key});
@@ -17,34 +18,13 @@ class VoiceRecordingPage extends StatefulWidget {
   State<VoiceRecordingPage> createState() => _VoiceRecordingPageState();
 }
 
-class _VoiceRecordingPageState extends State<VoiceRecordingPage>
-    with SingleTickerProviderStateMixin {
+class _VoiceRecordingPageState extends State<VoiceRecordingPage> {
   late final FeedbackService _feedbackService;
-
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
-
-    _fadeController.forward();
     _feedbackService = getIt<FeedbackService>();
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    super.dispose();
   }
 
   @override
@@ -61,11 +41,11 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
       appBar: AppBar(
         backgroundColor: appBarBgColor,
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Cerrar',
+          icon: const Icon(Icons.account_circle_outlined),
+          tooltip: 'Menú',
           onPressed: () {
             _feedbackService.light();
-            context.pop();
+            mainShellScaffoldKey.currentState?.openDrawer();
           },
         ),
         title: Text(
@@ -74,6 +54,24 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
         ),
         centerTitle: true,
         actions: [
+          BlocSelector<VoiceChatCubit, VoiceChatState,
+              ({bool show, bool hasPending})>(
+            selector: (state) => (
+              show: state is VoiceChatReady && state.hasMessages,
+              hasPending: state is VoiceChatReady && state.hasPendingItems,
+            ),
+            builder: (context, data) {
+              if (!data.show) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.edit_note_rounded),
+                tooltip: 'Nuevo chat',
+                onPressed: () {
+                  _feedbackService.light();
+                  _showNewChatDialog(context, isDark, data.hasPending);
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),
             tooltip: 'Ayuda',
@@ -84,15 +82,59 @@ class _VoiceRecordingPageState extends State<VoiceRecordingPage>
           ),
         ],
       ),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: BlocProvider(
-            create: (_) => getIt<VoiceChatCubit>(),
-            child: const VoiceChatView(),
-          ),
-        ),
+      body: const SafeArea(
+        child: VoiceChatView(),
       ),
+    );
+  }
+
+  void _showNewChatDialog(
+    BuildContext context,
+    bool isDark,
+    bool hasPending,
+  ) {
+    final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
+    final textColor =
+        isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: bgColor,
+          title: Text(
+            'Nueva conversación',
+            style: AppTypography.titleSmall.copyWith(color: textColor),
+          ),
+          content: Text(
+            hasPending
+                ? 'Tienes recordatorios pendientes que no se han guardado. '
+                    '¿Deseas descartarlos e iniciar una nueva conversación?'
+                : '¿Iniciar una nueva conversación?',
+            style: AppTypography.bodyMedium.copyWith(
+              color: isDark
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondary,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                context.read<VoiceChatCubit>().reset();
+              },
+              style: hasPending
+                  ? TextButton.styleFrom(foregroundColor: AppColors.error)
+                  : null,
+              child: Text(hasPending ? 'Descartar e iniciar' : 'Iniciar'),
+            ),
+          ],
+        );
+      },
     );
   }
 

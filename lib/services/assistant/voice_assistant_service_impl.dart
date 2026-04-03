@@ -1,4 +1,7 @@
 import '../../features/groups/domain/repositories/group_repository.dart';
+import '../../features/reminders/domain/entities/reminder.dart';
+import '../../features/reminders/domain/entities/reminder_status.dart';
+import '../../features/reminders/domain/entities/reminder_type.dart';
 import '../../features/reminders/domain/repositories/reminder_repository.dart';
 import 'assistant_api_client.dart';
 import 'models/assistant_request.dart';
@@ -62,22 +65,73 @@ class VoiceAssistantServiceImpl implements VoiceAssistantService {
   Future<bool> isAvailable() => _apiClient.healthCheck();
 
   /// Construye la memoria a partir de los recordatorios existentes.
+  /// Solo incluye recordatorios activos (pending/overdue) y notas de ubicación.
+  /// Los recordatorios agrupados se compactan en un único representante por grupo.
   Future<List<MemoryItem>> _buildMemory() async {
     try {
       final reminders = await _reminderRepository.getAll();
       final groups = await _groupRepository.getAll();
-      
-      // Crear un mapa de groupId -> groupLabel
+
       final groupLabels = {
         for (final group in groups) group.id: group.label,
       };
-      
-      return reminders.map((r) {
+
+      // Filter: only active reminders + location notes
+      final filtered = reminders
+          .where((r) => r.status.isActive || r.type == ReminderType.location)
+          .toList();
+
+      // Separate grouped vs individual
+      final grouped = <String, List<Reminder>>{};
+      final individual = <Reminder>[];
+
+      for (final r in filtered) {
+        if (r.recurrenceGroupId != null) {
+          grouped.putIfAbsent(r.recurrenceGroupId!, () => []).add(r);
+        } else {
+          individual.add(r);
+        }
+      }
+
+      final result = <MemoryItem>[];
+
+      // Add individual items
+      for (final r in individual) {
         final label = r.recurrenceGroupId != null
             ? groupLabels[r.recurrenceGroupId]
             : null;
-        return MemoryItem.fromReminder(r, groupLabel: label);
-      }).toList();
+        result.add(MemoryItem.fromReminder(r, groupLabel: label));
+      }
+
+      // Add one representative per group
+      for (final entry in grouped.entries) {
+        final groupId = entry.key;
+        final items = entry.value;
+        final label = groupLabels[groupId];
+
+        // Collect distinct medication names (titles)
+        final titles = items.map((r) => r.title).toSet().toList();
+        final compactTitle = '${titles.join(', ')} (${items.length} items)';
+
+        // Find nearest scheduledAt
+        final scheduled = items
+            .where((r) => r.scheduledAt != null)
+            .toList()
+          ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
+        final nearestScheduled =
+            scheduled.isNotEmpty ? scheduled.first.scheduledAt : null;
+
+        result.add(MemoryItem.groupRepresentative(
+          id: items.first.id,
+          compactTitle: compactTitle,
+          baseReminder: items.first,
+          nearestScheduledAt: nearestScheduled,
+          groupId: groupId,
+          groupLabel: label,
+        ));
+      }
+
+      return result;
     } catch (_) {
       return [];
     }

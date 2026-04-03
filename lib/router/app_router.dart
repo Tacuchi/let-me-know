@@ -6,39 +6,42 @@ import 'package:go_router/go_router.dart';
 import '../core/constants/constants.dart';
 import '../di/injection_container.dart';
 import '../features/alarm/presentation/pages/alarm_screen_page.dart';
-import '../features/notes/application/cubit/notes_cubit.dart';
-import '../features/home/presentation/pages/home_page.dart';
 import '../features/reminders/application/cubit/reminder_detail_cubit.dart';
 import '../features/reminders/presentation/pages/reminder_detail_page.dart';
 import '../features/reminders/presentation/pages/reminder_list_page.dart';
-import '../features/notes/presentation/pages/notes_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
+import '../features/voice_recording/application/cubit/voice_chat_cubit.dart';
 import '../features/voice_recording/presentation/pages/voice_recording_page.dart';
 import 'app_routes.dart';
 
+/// GlobalKey para el Scaffold del MainShell, permite abrir el drawer desde cualquier página.
+final mainShellScaffoldKey = GlobalKey<ScaffoldState>();
+
 /// Configuración principal del router de la aplicación
-/// Material Design 3 con transiciones fluidas (2025)
 final appRouter = GoRouter(
   initialLocation: AppRoutes.home,
   debugLogDiagnostics: false,
   routes: [
-    // Shell route para la navegación con bottom bar
+    // Shell route para la navegación con drawer
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return MainShell(navigationShell: navigationShell);
       },
       branches: [
-        // Rama: Home
+        // Rama 0: Chat (pantalla principal)
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: AppRoutes.home,
-              name: AppRoutes.homeName,
-              builder: (context, state) => const HomePage(),
+              name: AppRoutes.chatName,
+              builder: (context, state) => BlocProvider(
+                create: (_) => getIt<VoiceChatCubit>(),
+                child: const VoiceRecordingPage(),
+              ),
             ),
           ],
         ),
-        // Rama: Recordatorios
+        // Rama 1: Recordatorios
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -48,20 +51,7 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Rama: Notas
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: AppRoutes.notes,
-              name: AppRoutes.notesName,
-              builder: (context, state) => BlocProvider(
-                create: (_) => getIt<NotesCubit>()..start(),
-                child: const NotesPage(),
-              ),
-            ),
-          ],
-        ),
-        // Rama: Configuración
+        // Rama 2: Configuración
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -94,354 +84,182 @@ final appRouter = GoRouter(
         return AlarmScreenPage(reminderId: id);
       },
     ),
-    // Ruta modal: Grabación de voz con transición mejorada
-    GoRoute(
-      path: AppRoutes.record,
-      name: AppRoutes.recordName,
-      pageBuilder: (context, state) => CustomTransitionPage(
-        key: state.pageKey,
-        child: const VoiceRecordingPage(),
-        transitionDuration: const Duration(milliseconds: 350),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          // Transición combinada: slide + fade para efecto premium
-          final slideAnimation =
-              Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                  reverseCurve: Curves.easeInCubic,
-                ),
-              );
-
-          final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(
-              parent: animation,
-              curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
-            ),
-          );
-
-          return SlideTransition(
-            position: slideAnimation,
-            child: FadeTransition(opacity: fadeAnimation, child: child),
-          );
-        },
-      ),
-    ),
   ],
 );
 
-/// Shell principal con bottom navigation bar y FAB central
-/// Diseño Material 3 con animaciones fluidas (2025)
-class MainShell extends StatefulWidget {
+/// Shell principal con drawer lateral
+class MainShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: mainShellScaffoldKey,
+      drawer: _AppDrawer(
+        currentIndex: navigationShell.currentIndex,
+        onDestinationSelected: (index) {
+          navigationShell.goBranch(
+            index,
+            initialLocation: index == navigationShell.currentIndex,
+          );
+        },
+      ),
+      body: navigationShell,
+    );
+  }
 }
 
-class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
-  late AnimationController _fabController;
-  late Animation<double> _fabScaleAnimation;
+/// Drawer lateral de la aplicación
+class _AppDrawer extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onDestinationSelected;
 
-  @override
-  void initState() {
-    super.initState();
-    _fabController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _fabScaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.9,
-    ).animate(CurvedAnimation(parent: _fabController, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _fabController.dispose();
-    super.dispose();
-  }
+  const _AppDrawer({
+    required this.currentIndex,
+    required this.onDestinationSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      body: widget.navigationShell,
-      extendBody: true,
-      floatingActionButton: _buildAnimatedFAB(context, isDark),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildModernBottomBar(context, isDark),
-    );
-  }
-
-  Widget _buildAnimatedFAB(BuildContext context, bool isDark) {
-    final primaryColor = isDark
-        ? AppColors.accentPrimaryDark
-        : AppColors.accentPrimary;
-    final gradientEnd = isDark
-        ? AppColors.accentTertiary
-        : AppColors.accentTertiary;
-
-    return ScaleTransition(
-      scale: _fabScaleAnimation,
-      child: GestureDetector(
-        onTapDown: (_) => _fabController.forward(),
-        onTapUp: (_) {
-          _fabController.reverse();
-          HapticFeedback.mediumImpact();
-          context.pushNamed(AppRoutes.recordName);
-        },
-        onTapCancel: () => _fabController.reverse(),
-        child: Semantics(
-          button: true,
-          label: 'Crear nuevo recordatorio por voz',
-          child: Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [primaryColor, gradientEnd],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: primaryColor.withValues(alpha: 0.45),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                  spreadRadius: 0,
-                ),
-                BoxShadow(
-                  color: primaryColor.withValues(alpha: 0.2),
-                  blurRadius: 40,
-                  offset: const Offset(0, 16),
-                  spreadRadius: -5,
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Icon(Icons.mic_rounded, size: 32, color: Colors.white),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModernBottomBar(BuildContext context, bool isDark) {
     final bgColor = isDark ? AppColors.bgSecondaryDark : AppColors.bgSecondary;
-    final shadowColor = isDark
-        ? Colors.black54
-        : Colors.black.withValues(alpha: 0.1);
+    final textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final secondaryColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final primaryColor =
+        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: bgColor,
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor,
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
+    return Drawer(
+      backgroundColor: bgColor,
       child: SafeArea(
-        child: SizedBox(
-          height: 70,
-          child: Row(
-            children: [
-              // Inicio
-              Expanded(
-                child: _NavItem(
-                  index: 0,
-                  icon: Icons.home_outlined,
-                  selectedIcon: Icons.home_rounded,
-                  label: 'Inicio',
-                  isSelected: widget.navigationShell.currentIndex == 0,
-                  onTap: () => _navigateTo(0),
-                  isDark: isDark,
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.md,
               ),
-              // Tareas
-              Expanded(
-                child: _NavItem(
-                  index: 1,
-                  icon: Icons.checklist_outlined,
-                  selectedIcon: Icons.checklist_rounded,
-                  label: 'Tareas',
-                  isSelected: widget.navigationShell.currentIndex == 1,
-                  onTap: () => _navigateTo(1),
-                  isDark: isDark,
-                ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: primaryColor.withValues(alpha: 0.15),
+                    child: Icon(
+                      Icons.account_circle_rounded,
+                      size: 32,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Text(
+                    'Let Me Know',
+                    style: AppTypography.titleMedium.copyWith(color: textColor),
+                  ),
+                ],
               ),
-              // Espacio para el FAB
-              const SizedBox(width: 80),
-              // Notas
-              Expanded(
-                child: _NavItem(
-                  index: 2,
-                  icon: Icons.sticky_note_2_outlined,
-                  selectedIcon: Icons.sticky_note_2_rounded,
-                  label: 'Notas',
-                  isSelected: widget.navigationShell.currentIndex == 2,
-                  onTap: () => _navigateTo(2),
-                  isDark: isDark,
-                ),
-              ),
-              // Ajustes
-              Expanded(
-                child: _NavItem(
-                  index: 3,
-                  icon: Icons.settings_outlined,
-                  selectedIcon: Icons.settings_rounded,
-                  label: 'Ajustes',
-                  isSelected: widget.navigationShell.currentIndex == 3,
-                  onTap: () => _navigateTo(3),
-                  isDark: isDark,
-                ),
-              ),
-            ],
-          ),
+            ),
+            Divider(
+              color: isDark ? AppColors.dividerDark : AppColors.divider,
+              height: 1,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Opciones de navegación
+            _DrawerItem(
+              icon: Icons.chat_bubble_outline_rounded,
+              selectedIcon: Icons.chat_bubble_rounded,
+              label: 'Chat',
+              isSelected: currentIndex == 0,
+              primaryColor: primaryColor,
+              textColor: textColor,
+              secondaryColor: secondaryColor,
+              onTap: () => _selectDestination(context, 0),
+            ),
+            _DrawerItem(
+              icon: Icons.checklist_outlined,
+              selectedIcon: Icons.checklist_rounded,
+              label: 'Recordatorios',
+              isSelected: currentIndex == 1,
+              primaryColor: primaryColor,
+              textColor: textColor,
+              secondaryColor: secondaryColor,
+              onTap: () => _selectDestination(context, 1),
+            ),
+            _DrawerItem(
+              icon: Icons.settings_outlined,
+              selectedIcon: Icons.settings_rounded,
+              label: 'Ajustes',
+              isSelected: currentIndex == 2,
+              primaryColor: primaryColor,
+              textColor: textColor,
+              secondaryColor: secondaryColor,
+              onTap: () => _selectDestination(context, 2),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _navigateTo(int index) {
+  void _selectDestination(BuildContext context, int index) {
     HapticFeedback.selectionClick();
-    widget.navigationShell.goBranch(
-      index,
-      initialLocation: index == widget.navigationShell.currentIndex,
-    );
+    Navigator.pop(context); // Cerrar drawer
+    onDestinationSelected(index);
   }
 }
 
-/// Item de navegación con animaciones fluidas
-class _NavItem extends StatefulWidget {
-  final int index;
+/// Item individual del drawer
+class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final IconData selectedIcon;
   final String label;
   final bool isSelected;
+  final Color primaryColor;
+  final Color textColor;
+  final Color secondaryColor;
   final VoidCallback onTap;
-  final bool isDark;
 
-  const _NavItem({
-    required this.index,
+  const _DrawerItem({
     required this.icon,
     required this.selectedIcon,
     required this.label,
     required this.isSelected,
+    required this.primaryColor,
+    required this.textColor,
+    required this.secondaryColor,
     required this.onTap,
-    required this.isDark,
   });
 
   @override
-  State<_NavItem> createState() => _NavItemState();
-}
-
-class _NavItemState extends State<_NavItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.9,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final selectedColor = widget.isDark
-        ? AppColors.accentPrimaryDark
-        : AppColors.accentPrimary;
-    final unselectedColor = widget.isDark
-        ? AppColors.textSecondaryDark
-        : AppColors.textSecondary;
-    final indicatorColor = selectedColor.withValues(
-      alpha: widget.isDark ? 0.2 : 0.12,
-    );
-
-    return Semantics(
-      button: true,
-      selected: widget.isSelected,
-      label: widget.label,
-      child: GestureDetector(
-        onTapDown: (_) => _controller.forward(),
-        onTapUp: (_) {
-          _controller.reverse();
-          widget.onTap();
-        },
-        onTapCancel: () => _controller.reverse(),
-        behavior: HitTestBehavior.opaque,
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: SizedBox(
-            height: 60,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icono con indicador
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: widget.isSelected ? 16 : 12,
-                    vertical: widget.isSelected ? 4 : 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.isSelected
-                        ? indicatorColor
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    widget.isSelected ? widget.selectedIcon : widget.icon,
-                    color: widget.isSelected ? selectedColor : unselectedColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                // Label
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: widget.isSelected
-                        ? FontWeight.w600
-                        : FontWeight.w400,
-                    color: widget.isSelected ? selectedColor : unselectedColor,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      child: ListTile(
+        leading: Icon(
+          isSelected ? selectedIcon : icon,
+          color: isSelected ? primaryColor : secondaryColor,
+        ),
+        title: Text(
+          label,
+          style: AppTypography.bodyLarge.copyWith(
+            color: isSelected ? primaryColor : textColor,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
+        selected: isSelected,
+        selectedTileColor: primaryColor.withValues(alpha: 0.12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        ),
+        onTap: onTap,
       ),
     );
   }

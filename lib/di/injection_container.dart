@@ -1,12 +1,9 @@
 import 'package:get_it/get_it.dart';
 
 import 'package:let_me_know/core/database/drift/app_database.dart';
-import 'package:let_me_know/features/history/application/cubit/history_cubit.dart';
 import 'package:let_me_know/features/voice_recording/application/cubit/voice_chat_cubit.dart';
-import 'package:let_me_know/features/notes/application/cubit/notes_cubit.dart';
 import 'package:let_me_know/features/reminders/application/cubit/reminder_detail_cubit.dart';
 import 'package:let_me_know/features/reminders/application/cubit/reminder_list_cubit.dart';
-import 'package:let_me_know/features/reminders/application/cubit/reminder_summary_cubit.dart';
 import 'package:let_me_know/features/groups/domain/repositories/action_history_repository.dart';
 import 'package:let_me_know/features/groups/domain/repositories/group_repository.dart';
 import 'package:let_me_know/features/groups/infrastructure/repositories/action_history_repository_drift_impl.dart';
@@ -96,10 +93,7 @@ Future<void> configureDependencies() async {
 
   // Cubits
   getIt.registerFactory(() => ReminderListCubit(getIt()));
-  getIt.registerFactory(() => ReminderSummaryCubit(getIt()));
   getIt.registerFactory(() => ReminderDetailCubit(getIt()));
-  getIt.registerFactory(() => HistoryCubit(getIt()));
-  getIt.registerFactory(() => NotesCubit(getIt()));
   getIt.registerFactory(() => VoiceChatCubit(
         assistantService: getIt(),
         reminderRepository: getIt(),

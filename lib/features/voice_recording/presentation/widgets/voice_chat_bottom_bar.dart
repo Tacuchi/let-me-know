@@ -114,35 +114,52 @@ class _VoiceChatBottomBarState extends State<VoiceChatBottomBar> {
                           width: 1,
                         ),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _controller,
-                              focusNode: _focusNode,
-                              enabled: !isProcessing && !isRecording,
-                              maxLines: 4,
-                              minLines: 1,
-                              textCapitalization: TextCapitalization.sentences,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: textColor,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Escribe un mensaje...',
-                                hintStyle: AppTypography.bodyMedium.copyWith(
-                                  color: hintColor,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.md,
-                                  vertical: AppSpacing.sm + 2,
-                                ),
-                              ),
-                              onSubmitted: (_) => _sendMessage(),
-                            ),
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        enabled: !isProcessing && !isRecording,
+                        maxLines: 4,
+                        minLines: 1,
+                        textCapitalization: TextCapitalization.sentences,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: textColor,
+                        ),
+                        decoration: InputDecoration(
+                          filled: false,
+                          hintText: 'Escribe un mensaje...',
+                          hintStyle: AppTypography.bodyMedium.copyWith(
+                            color: hintColor,
                           ),
-                        ],
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm + 2,
+                          ),
+                          suffixIcon: (!_hasText && !isRecording)
+                              ? GestureDetector(
+                                  onTap: isProcessing
+                                      ? null
+                                      : () {
+                                          HapticFeedback.mediumImpact();
+                                          widget.onMicTap();
+                                        },
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                        right: AppSpacing.xs),
+                                    child: Icon(
+                                      Icons.mic_rounded,
+                                      color: hintColor,
+                                      size: 24,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          suffixIconConstraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 40,
+                          ),
+                        ),
+                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
                   ),
@@ -202,20 +219,22 @@ class _VoiceChatBottomBarState extends State<VoiceChatBottomBar> {
     required bool isProcessing,
     required bool isRecording,
   }) {
-    // Si hay texto, mostrar botón enviar
-    if (_hasText) {
+    if (isRecording) {
       return Material(
-        color: primaryColor,
+        color: AppColors.error,
         shape: const CircleBorder(),
         child: InkWell(
-          onTap: isProcessing ? null : _sendMessage,
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            widget.onMicTap();
+          },
           customBorder: const CircleBorder(),
           child: Container(
             width: 48,
             height: 48,
             alignment: Alignment.center,
-            child: Icon(
-              Icons.send_rounded,
+            child: const Icon(
+              Icons.stop_rounded,
               color: Colors.white,
               size: 22,
             ),
@@ -224,25 +243,24 @@ class _VoiceChatBottomBarState extends State<VoiceChatBottomBar> {
       );
     }
 
-    // Sin texto: mostrar botón mic
+    final enabled = _hasText && !isProcessing;
+
     return Material(
-      color: isRecording ? AppColors.recording : primaryColor,
+      color: enabled
+          ? primaryColor
+          : primaryColor.withValues(alpha: 0.4),
       shape: const CircleBorder(),
       child: InkWell(
-        onTap: isProcessing ? null : () {
-          HapticFeedback.mediumImpact();
-          widget.onMicTap();
-        },
+        onTap: enabled ? _sendMessage : null,
         customBorder: const CircleBorder(),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        child: Container(
           width: 48,
           height: 48,
           alignment: Alignment.center,
           child: Icon(
-            isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-            color: Colors.white,
-            size: 24,
+            Icons.send_rounded,
+            color: Colors.white.withValues(alpha: enabled ? 1.0 : 0.5),
+            size: 22,
           ),
         ),
       ),

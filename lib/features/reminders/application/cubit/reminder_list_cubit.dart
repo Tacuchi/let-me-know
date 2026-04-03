@@ -10,7 +10,7 @@ class ReminderListCubit extends Cubit<ReminderListState> {
   final ReminderRepository _repository;
 
   StreamSubscription? _sub;
-  ReminderListFilter _filter = ReminderListFilter.all;
+  ReminderListFilter _filter = ReminderListFilter.pending;
   String? _searchQuery;
 
   ReminderListCubit(this._repository) : super(const ReminderListLoading());

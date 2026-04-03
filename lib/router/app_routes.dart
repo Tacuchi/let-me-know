@@ -6,16 +6,12 @@ abstract final class AppRoutes {
   static const String reminders = '/reminders';
   static const String reminderDetail = '/reminders/:id';
   static const String alarm = '/alarm/:id';
-  static const String record = '/record';
-  static const String notes = '/notes';
   static const String settings = '/settings';
 
   // Names (para navegación nombrada)
-  static const String homeName = 'home';
+  static const String chatName = 'chat';
   static const String remindersName = 'reminders';
   static const String reminderDetailName = 'reminder-detail';
   static const String alarmName = 'alarm';
-  static const String recordName = 'record';
-  static const String notesName = 'notes';
   static const String settingsName = 'settings';
 }

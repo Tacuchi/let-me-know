@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/core.dart';
 import '../../../../core/services/feedback_service.dart';
 import '../../../../di/injection_container.dart';
-import '../../../../router/app_routes.dart';
 import '../../../../services/speech_to_text/speech_to_text_service.dart';
 import '../../../../services/tts/tts_service.dart';
 import '../../application/cubit/voice_chat_cubit.dart';
@@ -119,7 +117,6 @@ class _VoiceChatViewState extends State<VoiceChatView> {
 
     if (state is VoiceChatCompleted) {
       final messenger = ScaffoldMessenger.of(context);
-      final router = GoRouter.of(context);
 
       messenger.showSnackBar(
         SnackBar(
@@ -148,11 +145,11 @@ class _VoiceChatViewState extends State<VoiceChatView> {
         ),
       );
 
-      // Navegar a Home
+      // Reset del chat para volver al estado idle
+      final cubit = context.read<VoiceChatCubit>();
       Future.delayed(const Duration(milliseconds: 300), () {
         if (!mounted) return;
-        router.pop();
-        router.goNamed(AppRoutes.homeName);
+        cubit.reset();
       });
     }
   }
@@ -315,56 +312,46 @@ class _VoiceChatViewState extends State<VoiceChatView> {
   }
 
   Widget _buildRecordingIndicator(bool isDark, VoiceChatReady state) {
-    final primaryColor =
-        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final secondaryColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final liveText = state.liveTranscription;
+    final hasLiveText = liveText != null && liveText.isNotEmpty;
 
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
-        margin: const EdgeInsets.only(
-          left: AppSpacing.xl,
-          bottom: AppSpacing.sm,
-        ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm + 2,
-        ),
-        decoration: BoxDecoration(
-          color: primaryColor.withValues(alpha: 0.8),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-            bottomLeft: Radius.circular(16),
-            bottomRight: Radius.circular(4),
-          ),
-          border: Border.all(
-            color: AppColors.recording.withValues(alpha: 0.5),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _PulsingDot(),
-            const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                liveText != null && liveText.isNotEmpty
-                    ? liveText
-                    : 'Escuchando...',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: Colors.white,
-                  fontStyle: liveText == null || liveText.isEmpty
-                      ? FontStyle.italic
-                      : FontStyle.normal,
-                  height: 1.4,
-                ),
+            Text(
+              'Escuchando...',
+              style: AppTypography.bodySmall.copyWith(
+                color: secondaryColor,
+                fontStyle: FontStyle.italic,
               ),
             ),
+            const SizedBox(height: AppSpacing.md),
+            SoundWaveIndicator(
+              width: MediaQuery.of(context).size.width * 0.55,
+              height: 56,
+              barCount: 28,
+            ),
+            if (hasLiveText) ...[
+              const SizedBox(height: AppSpacing.md),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: Text(
+                  liveText,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: isDark
+                        ? AppColors.textPrimaryDark
+                        : AppColors.textPrimary,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -372,30 +359,27 @@ class _VoiceChatViewState extends State<VoiceChatView> {
   }
 
   Widget _buildProcessingIndicator(bool isDark) {
-    final primaryColor =
-        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final secondaryColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
 
-    return Center(
+    return Align(
+      alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-        child: Row(
+        padding: const EdgeInsets.only(
+          left: AppSpacing.md,
+          top: AppSpacing.sm,
+          bottom: AppSpacing.sm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(primaryColor),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
+            const ThinkingIndicator(size: 48),
+            const SizedBox(height: AppSpacing.xs),
             Text(
-              'Procesando...',
+              'Pensando...',
               style: AppTypography.bodySmall.copyWith(
-                color: isDark
-                    ? AppColors.textSecondaryDark
-                    : AppColors.textSecondary,
+                color: secondaryColor,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -413,8 +397,12 @@ class _VoiceChatViewState extends State<VoiceChatView> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondaryColor =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final primaryColor =
-        isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary;
+    final helperColor =
+        isDark ? AppColors.textHelperDark : AppColors.textHelper;
+
+    if (state.isRecording) {
+      return _buildIdleRecording(context, state, isDark, secondaryColor);
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
@@ -422,9 +410,9 @@ class _VoiceChatViewState extends State<VoiceChatView> {
         children: [
           const Spacer(flex: 2),
           Icon(
-            Icons.mic_none_rounded,
-            size: 64,
-            color: secondaryColor.withValues(alpha: 0.5),
+            Icons.chat_bubble_outline_rounded,
+            size: 48,
+            color: secondaryColor.withValues(alpha: 0.4),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
@@ -432,28 +420,67 @@ class _VoiceChatViewState extends State<VoiceChatView> {
             style: AppTypography.bodyLarge.copyWith(color: secondaryColor),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.md),
-          _buildExampleChips(isDark),
-          const Spacer(flex: 1),
-          AnimatedMicButton(
-            isRecording: state.isRecording,
-            onTap: () => _toggleRecording(context),
-            size: 88,
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Escribe o usa el micrófono',
+            style: AppTypography.helper.copyWith(color: helperColor),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Text(
-              key: ValueKey(state.isRecording ? 'stop' : 'start'),
-              state.isRecording ? 'Toca para finalizar' : 'Toca para hablar',
-              style: AppTypography.helper.copyWith(
-                color: state.isRecording ? primaryColor : secondaryColor,
-                fontWeight:
-                    state.isRecording ? FontWeight.w600 : FontWeight.w400,
+          const SizedBox(height: AppSpacing.lg),
+          _buildExampleChips(isDark),
+          const Spacer(flex: 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIdleRecording(
+    BuildContext context,
+    VoiceChatReady state,
+    bool isDark,
+    Color secondaryColor,
+  ) {
+    final liveText = state.liveTranscription;
+    final hasLiveText = liveText != null && liveText.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+      child: Column(
+        children: [
+          const Spacer(flex: 3),
+          Text(
+            'Escuchando...',
+            style: AppTypography.bodyLarge.copyWith(
+              color: secondaryColor,
+              fontStyle: FontStyle.italic,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          SoundWaveIndicator(
+            width: MediaQuery.of(context).size.width * 0.65,
+            height: 72,
+            barCount: 32,
+          ),
+          if (hasLiveText) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Text(
+                liveText,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: isDark
+                      ? AppColors.textPrimaryDark
+                      : AppColors.textPrimary,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
+          ],
+          const Spacer(flex: 2),
         ],
       ),
     );
@@ -463,33 +490,37 @@ class _VoiceChatViewState extends State<VoiceChatView> {
     final helperColor =
         isDark ? AppColors.textHelperDark : AppColors.textHelper;
     final bgColor = isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary;
+    final cubit = context.read<VoiceChatCubit>();
 
     final examples = [
-      '"Recordarme tomar pastillas a las 3pm"',
-      '"Dejé las llaves en la cocina"',
-      '"¿Qué tengo pendiente hoy?"',
+      'Recordarme tomar pastillas a las 3pm',
+      'Dejé las llaves en la cocina',
+      '¿Qué tengo pendiente hoy?',
     ];
 
     return Column(
       children: examples.map((example) {
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-            ),
-            child: Text(
-              example,
-              style: AppTypography.bodySmall.copyWith(
-                color: helperColor,
-                fontStyle: FontStyle.italic,
+          child: GestureDetector(
+            onTap: () => cubit.sendTextMessage(example),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
               ),
-              textAlign: TextAlign.center,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+              ),
+              child: Text(
+                '"$example"',
+                style: AppTypography.bodySmall.copyWith(
+                  color: helperColor,
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
         );
@@ -640,7 +671,7 @@ class _VoiceChatViewState extends State<VoiceChatView> {
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                context.pop();
+                context.read<VoiceChatCubit>().reset();
               },
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.error,
@@ -654,46 +685,3 @@ class _VoiceChatViewState extends State<VoiceChatView> {
   }
 }
 
-/// Punto rojo pulsante para indicar grabacion.
-class _PulsingDot extends StatefulWidget {
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.recording
-                .withValues(alpha: 0.5 + _controller.value * 0.5),
-          ),
-        );
-      },
-    );
-  }
-}

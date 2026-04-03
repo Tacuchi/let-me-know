@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../core/services/feedback_service.dart';
+import '../../../../router/app_router.dart';
 import '../../../groups/domain/entities/reminder_group.dart';
 import '../../../groups/domain/repositories/group_repository.dart';
 import '../../application/cubit/reminder_list_cubit.dart';
@@ -91,6 +92,14 @@ class _ReminderListPageState extends State<ReminderListPage>
           backgroundColor: bgColor,
           appBar: AppBar(
             backgroundColor: appBarBgColor,
+            leading: IconButton(
+              icon: const Icon(Icons.account_circle_outlined),
+              tooltip: 'Menú',
+              onPressed: () {
+                _feedbackService.light();
+                mainShellScaffoldKey.currentState?.openDrawer();
+              },
+            ),
             title: Text(
               'Mis Recordatorios',
               style: AppTypography.titleMedium.copyWith(color: textColor),

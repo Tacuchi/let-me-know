@@ -49,6 +49,29 @@ class MemoryItem {
     );
   }
 
+  /// Creates a compact representative MemoryItem for a group of reminders.
+  factory MemoryItem.groupRepresentative({
+    required String id,
+    required String compactTitle,
+    required Reminder baseReminder,
+    required DateTime? nearestScheduledAt,
+    required String groupId,
+    String? groupLabel,
+  }) {
+    return MemoryItem(
+      id: id,
+      title: compactTitle,
+      type: _typeToString(baseReminder.type),
+      status: 'PENDING',
+      importance: _importanceToString(baseReminder.importance),
+      scheduledAt: nearestScheduledAt?.toIso8601String(),
+      object: baseReminder.object,
+      location: baseReminder.location,
+      groupId: groupId,
+      groupLabel: groupLabel,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

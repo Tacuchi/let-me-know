@@ -116,11 +116,6 @@ test-results/
 # Logs
 *.log
 
-# AI assistant docs (project-specific)
-CLAUDE.md
-GEMINI.md
-WARP.md
-
 # Misc
 IconKitchen-Output/
 .fvm/

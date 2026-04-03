@@ -6,6 +6,7 @@ import '../../../../core/core.dart';
 import '../../../../di/injection_container.dart';
 import '../../../../services/tts/tts_service.dart';
 import '../../../../core/services/feedback_service.dart';
+import '../../../../router/app_router.dart';
 import '../../../reminders/domain/repositories/reminder_repository.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -87,6 +88,14 @@ class _SettingsPageState extends State<SettingsPage>
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: appBarBgColor,
+        leading: IconButton(
+          icon: const Icon(Icons.account_circle_outlined),
+          tooltip: 'Menú',
+          onPressed: () {
+            _feedbackService.light();
+            mainShellScaffoldKey.currentState?.openDrawer();
+          },
+        ),
         title: Text(
           'Configuración',
           style: AppTypography.titleMedium.copyWith(color: textColor),
