@@ -178,32 +178,39 @@ class _DesignShowcasePageState extends State<DesignShowcasePage> {
           // ── COUNTER ───────────────────────────────────────────────────
           _SectionTitle('Animated Counter'),
           const SizedBox(height: AppSpacing.md),
-          const Row(
-            children: [
-              Expanded(
-                child: LmkAnimatedCounter(
-                  value: 5,
-                  label: 'Pendientes',
-                  color: AppColors.warning,
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+            ),
+            child: const Row(
+              children: [
+                Expanded(
+                  child: LmkAnimatedCounter(
+                    value: 5,
+                    label: 'Pendientes',
+                    color: AppColors.warning,
+                  ),
                 ),
-              ),
-              SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: LmkAnimatedCounter(
-                  value: 2,
-                  label: 'Vencidos',
-                  color: AppColors.errorDeep,
+                SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: LmkAnimatedCounter(
+                    value: 2,
+                    label: 'Vencidos',
+                    color: AppColors.errorDeep,
+                  ),
                 ),
-              ),
-              SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: LmkAnimatedCounter(
-                  value: 8,
-                  label: 'Completados',
-                  color: AppColors.success,
+                SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: LmkAnimatedCounter(
+                    value: 8,
+                    label: 'Completados',
+                    color: AppColors.success,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
 
@@ -273,6 +280,16 @@ class _DesignShowcasePageState extends State<DesignShowcasePage> {
               icon: Icons.inbox_rounded,
               title: 'No tienes recordatorios',
               subtitle: 'Toca el micrófono para crear\ntu primer recordatorio',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(
+            height: 220,
+            child: LmkEmptyState(
+              icon: Icons.search_off_rounded,
+              title: 'Sin resultados',
+              subtitle: 'Prueba con otras palabras clave',
+              useGradientTitle: true,
             ),
           ),
           const SizedBox(height: AppSpacing.xl),

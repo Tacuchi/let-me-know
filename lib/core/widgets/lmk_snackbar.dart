@@ -34,13 +34,13 @@ void showLmkSnackBar(
         backgroundColor: bgColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
         ),
         margin: const EdgeInsets.all(AppSpacing.md),
         duration: duration,
         action: actionLabel != null && onAction != null
             ? SnackBarAction(
-                label: actionLabel,
+                label: actionLabel.toUpperCase(),
                 textColor: actionColor,
                 onPressed: onAction,
               )

@@ -27,7 +27,8 @@ class LmkProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveBgColor =
-        backgroundColor ?? (isDark ? AppColors.dividerDark : AppColors.divider);
+        backgroundColor ??
+        (isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary);
     final effectiveRadius = BorderRadius.circular(height / 2);
 
     return Container(
@@ -56,6 +57,16 @@ class LmkProgressBar extends StatelessWidget {
                                   ? AppColors.accentPrimaryDark
                                   : AppColors.accentPrimary)),
                     borderRadius: effectiveRadius,
+                    boxShadow: useGradient
+                        ? [
+                            BoxShadow(
+                              color: AppColors.accentPrimary.withValues(
+                                alpha: 0.15,
+                              ),
+                              blurRadius: 4,
+                            ),
+                          ]
+                        : null,
                   ),
                 );
               },

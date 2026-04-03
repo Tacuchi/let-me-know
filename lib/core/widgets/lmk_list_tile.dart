@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../constants/constants.dart';
+import 'lmk_icon_box.dart';
 
 /// Tile de navegación con icono, título, subtítulo y flecha.
 class LmkNavTile extends StatelessWidget {
@@ -46,14 +47,7 @@ class LmkNavTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: primaryColor, size: 22),
-            ),
+            LmkIconBox(icon: icon, color: primaryColor),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -120,14 +114,7 @@ class LmkSwitchTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: primaryColor, size: 22),
-          ),
+          LmkIconBox(icon: icon, color: primaryColor),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -194,14 +181,7 @@ class LmkInfoTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: primaryColor, size: 22),
-          ),
+          LmkIconBox(icon: icon, color: primaryColor),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -224,7 +204,7 @@ class LmkInfoTile extends StatelessWidget {
   }
 }
 
-/// Sección agrupada con header y children separados por dividers.
+/// Sección agrupada con header y children separados por espacio (sin dividers).
 class LmkSettingsSection extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -246,7 +226,6 @@ class LmkSettingsSection extends StatelessWidget {
     final cardColor = isDark
         ? AppColors.bgSecondaryDark
         : AppColors.bgSecondary;
-    final dividerColor = isDark ? AppColors.dividerDark : AppColors.divider;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,13 +238,13 @@ class LmkSettingsSection extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(icon, color: primaryColor, size: 18),
+              LmkIconBox(
+                icon: icon,
+                color: primaryColor,
+                size: 18,
+                padding: 6,
+                radius: 6,
+                backgroundOpacity: 0.15,
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
@@ -279,7 +258,7 @@ class LmkSettingsSection extends StatelessWidget {
             ],
           ),
         ),
-        // Card con children
+        // Card con children separados por espacio (no dividers)
         Container(
           margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           decoration: BoxDecoration(
@@ -287,30 +266,20 @@ class LmkSettingsSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
           child: Column(
-            children: children.asMap().entries.map((entry) {
-              final index = entry.key;
-              final child = entry.value;
-              final isLast = index == children.length - 1;
-              return Column(
-                children: [
-                  child,
-                  if (!isLast)
-                    Divider(
-                      height: 1,
-                      indent: AppSpacing.md,
-                      endIndent: AppSpacing.md,
-                      color: dividerColor,
-                    ),
-                ],
-              );
-            }).toList(),
+            children: [
+              for (int i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i < children.length - 1)
+                  const SizedBox(height: AppSpacing.xs),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.md),

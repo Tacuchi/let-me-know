@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../constants/constants.dart';
+
 /// Contenedor con animación de pulso (escala + opacidad del fondo).
 ///
 /// Usado en alarmas activas, estados de grabación, y cualquier UI
@@ -87,12 +89,13 @@ class _LmkPulseContainerState extends State<LmkPulseContainer>
                 ? BoxDecoration(
                     color: _colorAnim.value,
                     borderRadius:
-                        widget.borderRadius ?? BorderRadius.circular(20),
+                        widget.borderRadius ??
+                        BorderRadius.circular(AppSpacing.radiusMd),
                     boxShadow: [
                       BoxShadow(
-                        color: widget.color!.withValues(alpha: 0.25),
-                        blurRadius: 20,
-                        spreadRadius: 2,
+                        color: widget.color!.withValues(alpha: 0.15),
+                        blurRadius: 25,
+                        spreadRadius: 0,
                       ),
                     ],
                   )

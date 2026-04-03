@@ -18,7 +18,7 @@ class LmkTypeBadge extends StatelessWidget {
   final Color color;
   final IconData? icon;
 
-  /// Modo compacto: padding y fuente más pequeños (para badges inline).
+  /// Modo compacto: padding y fuente más pequeños, texto uppercase (para badges inline).
   final bool compact;
 
   const LmkTypeBadge({
@@ -31,19 +31,29 @@ class LmkTypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hPad = compact ? 6.0 : 14.0;
-    final vPad = compact ? 2.0 : 8.0;
+    final hPad = compact ? 6.0 : AppSpacing.sm + 4;
+    final vPad = compact ? 2.0 : AppSpacing.xs + 2;
     final iconSize = compact ? 13.0 : 18.0;
-    final fontSize = compact ? 10.0 : 14.0;
-    final fontWeight = compact ? FontWeight.w700 : FontWeight.w600;
-    final borderRadius = compact
-        ? BorderRadius.circular(AppSpacing.radiusSm)
-        : BorderRadius.circular(AppSpacing.radiusLg);
+    final iconGap = compact ? 3.0 : 6.0;
+
+    // Pill shape para ambos modos (sistema Resonant Horizon)
+    const borderRadius = BorderRadius.all(
+      Radius.circular(AppSpacing.radiusFull),
+    );
+
+    // Tipografía: tokens del sistema en lugar de TextStyle raw
+    final textStyle = compact
+        ? AppTypography.badgeText.copyWith(color: color)
+        : AppTypography.chipLabel.copyWith(color: color);
+
+    // El label en modo compact va siempre uppercase (mandato del sistema)
+    final displayLabel = compact ? label.toUpperCase() : label;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        // Alpha 0.10 — estándar del sistema (igual que LmkInfoBadge)
+        color: color.withValues(alpha: 0.10),
         borderRadius: borderRadius,
       ),
       child: Row(
@@ -51,17 +61,9 @@ class LmkTypeBadge extends StatelessWidget {
         children: [
           if (icon != null) ...[
             Icon(icon, color: color, size: iconSize),
-            SizedBox(width: compact ? 3 : 6),
+            SizedBox(width: iconGap),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: fontWeight,
-              color: color,
-              letterSpacing: compact ? 0.4 : 0,
-            ),
-          ),
+          Text(displayLabel, style: textStyle),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../constants/constants.dart';
+import 'lmk_icon_box.dart';
 
 /// Handle bar reutilizable para bottom sheets.
 class LmkBottomSheetHandle extends StatelessWidget {
@@ -63,13 +64,12 @@ class LmkBottomSheetOption extends StatelessWidget {
               (isDark ? AppColors.accentPrimaryDark : AppColors.accentPrimary));
 
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: effectiveColor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-        ),
-        child: Icon(icon, color: effectiveColor, size: 22),
+      leading: LmkIconBox(
+        icon: icon,
+        color: effectiveColor,
+        size: 22,
+        padding: AppSpacing.sm,
+        radius: AppSpacing.radiusSm,
       ),
       title: Text(
         label,

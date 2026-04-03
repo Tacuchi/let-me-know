@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../constants/constants.dart';
+import 'lmk_icon_box.dart';
+import 'lmk_gradient_text.dart';
 
 /// Estado vacío con icono animado, título y subtítulo.
 ///
@@ -12,6 +14,9 @@ class LmkEmptyState extends StatelessWidget {
   final Widget? action;
   final Color? iconColor;
 
+  /// Si es true, el título se renderiza con gradiente primario.
+  final bool useGradientTitle;
+
   const LmkEmptyState({
     super.key,
     required this.icon,
@@ -19,6 +24,7 @@ class LmkEmptyState extends StatelessWidget {
     required this.subtitle,
     this.action,
     this.iconColor,
+    this.useGradientTitle = false,
   });
 
   @override
@@ -45,29 +51,30 @@ class LmkEmptyState extends StatelessWidget {
               duration: const Duration(milliseconds: 600),
               curve: Curves.elasticOut,
               builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 56,
-                      color: primaryColor.withValues(alpha: 0.7),
-                    ),
-                  ),
-                );
+                return Transform.scale(scale: value, child: child);
               },
+              child: LmkIconBox(
+                icon: icon,
+                color: primaryColor,
+                circle: true,
+                size: 56,
+                padding: AppSpacing.lg,
+                backgroundOpacity: 0.10,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text(
-              title,
-              style: AppTypography.titleSmall.copyWith(color: textColor),
-              textAlign: TextAlign.center,
-            ),
+            if (useGradientTitle)
+              LmkGradientText(
+                title,
+                style: AppTypography.titleSmall,
+                textAlign: TextAlign.center,
+              )
+            else
+              Text(
+                title,
+                style: AppTypography.titleSmall.copyWith(color: textColor),
+                textAlign: TextAlign.center,
+              ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               subtitle,

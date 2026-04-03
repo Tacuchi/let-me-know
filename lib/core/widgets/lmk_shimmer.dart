@@ -103,6 +103,10 @@ class LmkSkeletonBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final ghostBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.20);
+
     return LmkShimmer(
       child: Container(
         height: height,
@@ -110,6 +114,14 @@ class LmkSkeletonBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? AppColors.bgTertiaryDark : AppColors.bgTertiary,
           borderRadius: BorderRadius.circular(borderRadius),
+          border: Border.all(color: ghostBorder),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
       ),
     );

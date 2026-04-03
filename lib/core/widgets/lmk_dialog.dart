@@ -1,8 +1,11 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../constants/constants.dart';
+import 'lmk_icon_box.dart';
 
-/// Diálogo de confirmación con el tema Resonant Horizon.
+/// Diálogo de confirmación glassmorphic con el tema Resonant Horizon.
 ///
 /// Muestra título, mensaje, y dos botones (cancelar / confirmar).
 class LmkConfirmDialog extends StatelessWidget {
@@ -38,88 +41,113 @@ class LmkConfirmDialog extends StatelessWidget {
         : AppColors.accentPrimary;
     final effectiveConfirmColor = confirmColor ?? primaryColor;
 
+    // Ghost border
+    final ghostBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.20);
+
     return Dialog(
-      backgroundColor: bgColor,
-      shape: RoundedRectangleBorder(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: effectiveConfirmColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: effectiveConfirmColor, size: 32),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            Text(
-              title,
-              style: AppTypography.titleSmall.copyWith(color: textColor),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              message,
-              style: AppTypography.bodyMedium.copyWith(color: secondaryColor),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.md,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusFull,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      cancelLabel,
-                      style: AppTypography.chipLabel.copyWith(
-                        color: secondaryColor,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: effectiveConfirmColor,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.md,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusFull,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      confirmLabel,
-                      style: AppTypography.chipLabel.copyWith(
-                        color: AppColors.textOnPrimary,
-                      ),
-                    ),
-                  ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: bgColor.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              border: Border.all(color: ghostBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
                 ),
               ],
             ),
-          ],
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    LmkIconBox(
+                      icon: icon!,
+                      color: effectiveConfirmColor,
+                      circle: true,
+                      size: 32,
+                      padding: AppSpacing.md,
+                      backgroundOpacity: 0.12,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  Text(
+                    title,
+                    style: AppTypography.titleSmall.copyWith(color: textColor),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    message,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: secondaryColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.md,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusFull,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            cancelLabel.toUpperCase(),
+                            style: AppTypography.chipLabel.copyWith(
+                              color: secondaryColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: effectiveConfirmColor,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.md,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusFull,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            confirmLabel.toUpperCase(),
+                            style: AppTypography.chipLabel.copyWith(
+                              color: AppColors.textOnPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
